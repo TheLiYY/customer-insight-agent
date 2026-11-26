@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
 import Chart from '../components/Chart'
 import { Card, ErrorBox, Kpi, Loading, Table, Tag } from '../components/ui'
@@ -177,51 +177,55 @@ export default function Campaign({ onNavigate }) {
               </Card>
 
               <div className="grid grid-2">
-                <Card title="选品结构" subtitle="按该人群的人均消费额排序">
-                  <Chart
-                    height={240}
-                    option={{
-                      tooltip: { trigger: 'item', formatter: '{b}<br/>人均 {c} 元（{d}%）' },
-                      legend: { bottom: 0, icon: 'circle', itemWidth: 8, itemHeight: 8, textStyle: { fontSize: 12 } },
-                      series: [
-                        {
-                          type: 'pie',
-                          radius: ['40%', '66%'],
-                          center: ['50%', '43%'],
-                          label: { formatter: '{b} {d}%', fontSize: 11, color: '#6b7280' },
-                          data: plan.products.map((p, i) => ({
-                            name: p.name,
-                            value: Number(p.avg_spend.toFixed(1)),
-                            itemStyle: { color: PALETTE[i % PALETTE.length] },
-                          })),
-                        },
-                      ],
-                    }}
-                  />
-                </Card>
+                {plan.products.length ? (
+                  <Card title="选品结构" subtitle="按该人群的人均消费额排序">
+                    <Chart
+                      height={240}
+                      option={{
+                        tooltip: { trigger: 'item', formatter: '{b}<br/>人均 {c} 元（{d}%）' },
+                        legend: { bottom: 0, icon: 'circle', itemWidth: 8, itemHeight: 8, textStyle: { fontSize: 12 } },
+                        series: [
+                          {
+                            type: 'pie',
+                            radius: ['40%', '66%'],
+                            center: ['50%', '43%'],
+                            label: { formatter: '{b} {d}%', fontSize: 11, color: '#6b7280' },
+                            data: plan.products.map((p, i) => ({
+                              name: p.name,
+                              value: Number(Number(p.avg_spend).toFixed(1)),
+                              itemStyle: { color: PALETTE[i % PALETTE.length] },
+                            })),
+                          },
+                        ],
+                      }}
+                    />
+                  </Card>
+                ) : null}
 
-                <Card title="渠道配比" subtitle="该人群历史下单渠道占比，优先主渠道投放">
-                  <Chart
-                    height={240}
-                    option={{
-                      grid: { left: 44, right: 20, top: 20, bottom: 30 },
-                      tooltip: { trigger: 'axis', valueFormatter: (v) => `${(v * 100).toFixed(1)}%` },
-                      xAxis: { type: 'category', data: plan.channel_mix.map((c) => c.name), ...axisStyle },
-                      yAxis: { type: 'value', axisLabel: { formatter: '{value}%' }, ...axisStyle },
-                      series: [
-                        {
-                          type: 'bar',
-                          barWidth: '44%',
-                          data: plan.channel_mix.map((c, i) => ({
-                            value: Number((c.ratio * 100).toFixed(1)),
-                            itemStyle: { color: PALETTE[i % PALETTE.length], borderRadius: [6, 6, 0, 0] },
-                          })),
-                          label: { show: true, position: 'top', formatter: '{c}%', color: '#6b7280', fontSize: 11 },
-                        },
-                      ],
-                    }}
-                  />
-                </Card>
+                {plan.channel_mix.length ? (
+                  <Card title="渠道配比" subtitle="该人群历史下单渠道占比，优先主渠道投放">
+                    <Chart
+                      height={240}
+                      option={{
+                        grid: { left: 44, right: 20, top: 20, bottom: 30 },
+                        tooltip: { trigger: 'axis', valueFormatter: (v) => `${Number(v).toFixed(1)}%` },
+                        xAxis: { type: 'category', data: plan.channel_mix.map((c) => c.name), ...axisStyle },
+                        yAxis: { type: 'value', axisLabel: { formatter: '{value}%' }, ...axisStyle },
+                        series: [
+                          {
+                            type: 'bar',
+                            barWidth: '44%',
+                            data: plan.channel_mix.map((c, i) => ({
+                              value: Number((c.ratio * 100).toFixed(1)),
+                              itemStyle: { color: PALETTE[i % PALETTE.length], borderRadius: [6, 6, 0, 0] },
+                            })),
+                            label: { show: true, position: 'top', formatter: '{c}%', color: '#6b7280', fontSize: 11 },
+                          },
+                        ],
+                      }}
+                    />
+                  </Card>
+                ) : null}
               </div>
 
               <Card title="圈定名单（前 10 位）" subtitle={`按响应概率排序，共 ${plan.selected} 人进入触达池`} extra={

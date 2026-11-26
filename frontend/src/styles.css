@@ -809,3 +809,10 @@ tbody tr:hover {
   padding: 0;
 }
 .link-btn:hover { text-decoration: underline; }
+
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}

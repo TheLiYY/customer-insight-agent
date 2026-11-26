@@ -1,12 +1,15 @@
 // 统一的数字与文案格式化工具
-export const pct = (v, digits = 1) => `${((v ?? 0) * 100).toFixed(digits)}%`
+const missing = (v) => v === null || v === undefined
+export const pct = (v, digits = 1) => (missing(v) ? '—' : `${(v * 100).toFixed(digits)}%`)
 export const num = (v, digits = 0) =>
-  Number(v ?? 0).toLocaleString('zh-CN', {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  })
-export const money = (v, digits = 0) => `¥${num(v, digits)}`
-export const fixed = (v, digits = 2) => Number(v ?? 0).toFixed(digits)
+  missing(v)
+    ? '—'
+    : Number(v).toLocaleString('zh-CN', {
+        minimumFractionDigits: digits,
+        maximumFractionDigits: digits,
+      })
+export const money = (v, digits = 0) => (missing(v) ? '—' : `¥${num(v, digits)}`)
+export const fixed = (v, digits = 2) => (missing(v) ? '—' : Number(v).toFixed(digits))
 
 export const PALETTE = [
   '#3b6cf6',

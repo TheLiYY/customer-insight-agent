@@ -15,6 +15,18 @@ export default function Propensity() {
   if (error) return <ErrorBox error={error} />
   if (!data) return <Loading text="正在训练响应预测模型…" />
 
+  if (data.available === false) {
+    return (
+      <Card title="这份数据暂时跑不了响应预测" subtitle="响应预测需要一个「是否响应过活动」的标签列">
+        <p className="muted">{data.reason}</p>
+        <p className="muted small">
+          补充方式：在数据里加一列 <code>response</code>（取值为 1/0 或 yes/no）后重新跑
+          <code> prepare_data.py</code>，这个页面就会自动启用。其余页面（总览、RFM 分层、客户画像、营销方案）不受影响。
+        </p>
+      </Card>
+    )
+  }
+
   const m = data.metrics
   const cf = m.confusion
   const best = data.lift[0]
@@ -113,7 +125,7 @@ export default function Propensity() {
 
       <Card
         title="验证集混淆矩阵"
-        subtitle={`基准响应率 ${pct(data.base_rate)}。样本不均衡（只有 13.5% 的人会响应），所以模型用类别加权训练，并单独调阈值。`}
+        subtitle={`基准响应率 ${pct(data.base_rate)}。样本不均衡（只有 ${pct(data.base_rate)} 的人会响应），所以模型用类别加权训练，并单独调阈值。`}
       >
         <div className="stat-grid">
           <div className="stat">
