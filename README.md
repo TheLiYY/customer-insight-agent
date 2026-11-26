@@ -314,6 +314,37 @@ A：能。离线规则引擎覆盖 7 类意图，演示效果与在线模式一�
 
 ---
 
-## 12. 许可
+## 12. 上传到 GitHub
+
+仓库已经初始化好（分支 `main`，4 个提交，60 个受版本控制的文件），你只需要建远程仓库并推送：
+
+```bash
+# 1. 在 GitHub 上新建一个空仓库（不要勾选 README / .gitignore）
+#    例如 https://github.com/<你的用户名>/customer-insight-agent
+
+# 2. 关联远程并推送（在本项目根目录执行）
+git remote add origin https://github.com/<你的用户名>/customer-insight-agent.git
+git branch -M main
+git push -u origin main
+```
+
+首次推送会要求登录。推荐用 **Personal Access Token**（GitHub → Settings → Developer settings → Personal access tokens），把它当密码粘贴即可；或先执行 `gh auth login` 用 GitHub CLI 登录。
+
+> 用 SSH 的话：`git remote add origin git@github.com:<用户名>/customer-insight-agent.git`，需要本地已配置 SSH Key。
+
+**提交历史（已生成）**
+
+| 提交 | 内容 |
+| --- | --- |
+| `chore: 初始化项目骨架与数据流水线` | 目录结构、数据清洗脚本、原始/清洗后数据与 Excel |
+| `feat(backend): …分析内核与 API` | RFM / 聚类 / 画像 / 预测 / 关联 / 方案 + 13 个接口 + Agent + 测试 |
+| `feat(frontend): …七页看板与对话界面` | React 页面、ECharts 封装、构建产物 |
+| `docs: README、讲解稿、API 文档与 CI` | 文档与 GitHub Actions |
+
+推送完成后，建议在仓库里打开 **Actions** 标签页确认 CI 跑通（Python 3.11/3.12/3.13 冒烟测试 + 前端构建）。
+
+---
+
+## 13. 许可
 
 MIT License，数据集版权归原始发布方（Kaggle: Customer Personality Analysis）所有，仅用于学习与研究。
