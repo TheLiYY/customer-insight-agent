@@ -1,0 +1,41 @@
+# =============================================================================
+# 换机器部署用的 compose（不含 build 段）
+# 配合同目录的 images.tar 使用：镜像已经打包好，直接加载 + 启动，无需联网构建
+# =============================================================================
+name: customer-insight
+
+services:
+  api:
+    image: customer-insight-api:1.0.0
+    container_name: customer-insight-api
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+    networks:
+      - appnet
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  web:
+    image: customer-insight-web:1.0.0
+    container_name: customer-insight-web
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - appnet
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  appnet:
+    driver: bridge

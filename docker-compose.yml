@@ -1,0 +1,59 @@
+# =============================================================================
+# 一键部署：docker compose up -d --build
+#   浏览器打开 http://localhost:8080
+#
+#   web  Nginx：托管前端静态文件 + 把 /api 反代到 api（只有它对外暴露端口）
+#   api  FastAPI：只监听容器内网卡，不对宿主机发端口
+# 换机器时只要 Docker + 本目录，不需要 Node、不需要 Python 环境。
+# =============================================================================
+name: customer-insight
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.api
+    image: customer-insight-api:1.0.0
+    container_name: customer-insight-api
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      # 想接在线大模型时取消注释（不配也能用，会自动走离线规则模式）
+      # LLM_BASE_URL: https://api.deepseek.com/v1
+      # LLM_API_KEY: sk-xxxx
+      # LLM_MODEL: deepseek-chat
+    # 想用自己的 Excel 数据训练：把文件放进 ./data/，再取消下面两行注释
+    # volumes:
+    #   - ./data:/data
+    networks:
+      - appnet
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  web:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.web
+    image: customer-insight-web:1.0.0
+    container_name: customer-insight-web
+    restart: unless-stopped
+    ports:
+      # 宿主机端口:容器端口。8080 被占用就改成 "18080:80"
+      - "8080:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - appnet
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  appnet:
+    driver: bridge

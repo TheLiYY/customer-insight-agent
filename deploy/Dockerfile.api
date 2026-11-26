@@ -1,0 +1,33 @@
+# =============================================================================
+# 后端镜像：FastAPI + scikit-learn/mlxtend，内含清洗后的数据，启动即用
+# 构建：docker build -f deploy/Dockerfile.api -t customer-insight-api:1.0.0 .
+# =============================================================================
+FROM python:3.13-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    TZ=Asia/Shanghai
+
+WORKDIR /app
+
+# 依赖单独一层：只改代码不重装依赖，重建秒级完成
+COPY backend/requirements.txt /app/backend/requirements.txt
+RUN pip install -r /app/backend/requirements.txt
+
+# 代码 + 数据（仓库里的 backend/data 已包含 2205 行原始表，镜像离线可用）
+COPY backend /app/backend
+COPY scripts /app/scripts
+
+# 用镜像内的原始数据重新跑一遍清洗，保证数据产物和代码版本一致（不联网）
+WORKDIR /app/backend
+RUN python /app/scripts/prepare_data.py
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=25s --retries=3 \
+    CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3).status == 200 else 1)"
+
+# 只监听容器内网卡，端口不对外发布；对外由 web 容器（Nginx）反代
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

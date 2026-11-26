@@ -1,0 +1,20 @@
+# 构建上下文排除：这些目录/文件不会进入镜像，构建更快
+.git
+.gitattributes
+.github
+.venv
+.tmp
+node_modules
+**/node_modules
+frontend/dist
+deploy/logs
+deploy/temp
+docs
+dist-bundle
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/.pytest_cache
+**/*.log
+**/.DS_Store
+Thumbs.db

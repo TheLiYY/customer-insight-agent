@@ -89,11 +89,18 @@ customer-insight-agent/
 ├── scripts/
 │   ├── prepare_data.py            # 多镜像下载 → 清洗 → 生成 Excel/CSV/字段元数据
 │   ├── export_report.py           # 生成《客户洞察分析报告》Excel（含图表）
-│   ├── export_openapi.py          # 导出 OpenAPI / Postman 集合（导入 Apifox）
 │   └── export_openapi.py          # 导出 OpenAPI / Postman 集合（导入 Apifox）
 ├── deploy/
-│   ├── nginx.conf                 # ★ 前端部署配置（静态站点 + /api 反代）
-│   └── README.md                  # Nginx 部署步骤与排障表
+│   ├── nginx.conf                 # ★ 本机 Nginx 部署配置（静态站点 + /api 反代）
+│   ├── README.md                  # Nginx 部署步骤与排障表
+│   ├── Dockerfile.api             # 后端镜像（Python 3.13 + 依赖 + 内置数据）
+│   ├── Dockerfile.web             # 前端镜像（node 构建 → nginx 托管）
+│   ├── nginx.docker.conf          # 容器内站点配置
+│   ├── docker-compose.bundle.yml  # 换机器用的无 build 版 compose
+│   ├── make-bundle.ps1            # 一键打离线部署包（镜像 + compose）
+│   └── DOCKER.md                  # ★ Docker 部署说明（换机器零环境）
+├── docker-compose.yml             # 一键启动：web(Nginx) + api(FastAPI)
+├── .dockerignore
 ├── docs/
 │   ├── PROJECT_GUIDE.md           # 项目讲解稿（架构、算法、演示、答辩问答）
 │   ├── CODE_TOUR.md               # ★ 代码导读（逐文件讲清"为什么这么写"）
@@ -127,6 +134,26 @@ pip install -r backend/requirements.txt
 python scripts/prepare_data.py
 python backend/run.py
 ```
+
+### 方式 C：Docker（换机器最省事，推荐交付/演示用）
+
+目标机器**只要装了 Docker**，不用 Python、不用 Node、不用装依赖：
+
+```bash
+docker compose up -d --build      # 首次构建几分钟，之后启动几秒
+# 浏览器打开 http://localhost:8080
+```
+
+换一台电脑时甚至不需要源码和网络：先在有 Docker 的机器上打离线包，
+
+```powershell
+powershell -ExecutionPolicy Bypass -File deploy\make-bundle.ps1   # 生成 dist-bundle/（镜像 + compose + 说明）
+```
+
+把 `dist-bundle` 拷过去，然后 `docker load -i images.tar` → `docker compose up -d` 即可。
+
+两者的分工：**本机改代码用 venv + Nginx**，**交付/换机用 Docker**。容器结构（只有 Nginx 对外暴露端口，
+后端在容器内网、由 Nginx 反代 `/api`）与排障表见 **[deploy/DOCKER.md](deploy/DOCKER.md)**。
 
 ### 启动前端（Nginx 托管，前后端分离）
 
@@ -377,6 +404,8 @@ python scripts/export_openapi.py       # 导出 OpenAPI / Postman 给 Apifox
 | [`docs/CODE_TOUR.md`](docs/CODE_TOUR.md) | 你自己 / 面试官 | 逐个文件讲清职责、执行链路、为什么这么设计；含二次开发手册 |
 | [`docs/PROJECT_GUIDE.md`](docs/PROJECT_GUIDE.md) | 汇报现场 | 30 秒 / 3 分钟 / 8 分钟三套讲稿 + 13 个高频追问 |
 | [`docs/API.md`](docs/API.md) | 前后端联调 | 14 个接口的字段级说明与示例 |
+| [`deploy/DOCKER.md`](deploy/DOCKER.md) | 交付 / 换机器 | 镜像结构、一键启动、离线部署包、11 条排障表 |
+| [`deploy/README.md`](deploy/README.md) | 本机运维 | Nginx 部署步骤、Linux systemd、缓存策略对照 |
 
 ---
 
@@ -393,6 +422,9 @@ A：k 由轮廓系数与肘部法共同确定。消费类数据本身特征高�
 
 **Q：数据量 1867 行，结论可信吗？**
 A：这是公开营销活动数据，用于**验证方法论与工程链路**。上生产需要：更大样本、时间窗滚动验证、A/B 实验校验 ROI。项目在自动结论里也标出了这些局限。
+
+**Q：只有 Docker、没有 Python 的电脑能跑吗？**
+A：能，而且这是推荐的交付方式。`docker compose up -d --build` 一条命令起 web + api，环境全在镜像里；换机器时用 `deploy/make-bundle.ps1` 打离线包（`docker load` + `up -d`），官方镜像层也一起打包，目标机不需要联网。详见 [`deploy/DOCKER.md`](deploy/DOCKER.md)。
 
 **Q：Agent 没有大模型 Key 能用吗？**
 A：能。离线规则引擎覆盖 8 类意图，演示效果一致，只是不能回答开放式问题。

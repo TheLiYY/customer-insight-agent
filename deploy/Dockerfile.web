@@ -1,0 +1,32 @@
+# =============================================================================
+# 前端镜像：多阶段构建
+#   阶段 1  node:20 里装依赖并打包出 dist（目标机器不需要装 Node）
+#   阶段 2  nginx:alpine 托管 dist，并把 /api 反代到 api 容器
+# 构建：docker build -f deploy/Dockerfile.web -t customer-insight-web:1.0.0 .
+# =============================================================================
+FROM node:20-alpine AS build
+
+WORKDIR /app
+ENV CI=true
+
+# 用 pnpm 装依赖（和本地开发一致，lockfile 已入库）
+RUN npm install -g pnpm@10
+
+COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml ./
+RUN pnpm install
+
+COPY frontend/ /app/
+RUN pnpm build
+
+
+# ----------------------------- 运行时镜像 -----------------------------
+FROM nginx:stable-alpine
+
+# 换掉官方默认站点：静态托管 dist + /api 反代 + SPA 回落
+COPY deploy/nginx.docker.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/dist /usr/share/nginx/html
+
+EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget -qO- http://127.0.0.1/healthz > /dev/null || exit 1

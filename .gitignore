@@ -37,3 +37,7 @@ Thumbs.db
 # frontend/dist 是构建产物，但为了「克隆下来 python run.py 就能看到页面」，
 # 这里**保留**它不做忽略；改前端后执行 `pnpm build` 重新生成即可。
 # backend/data 下的 csv/xlsx/json 是项目数据资产，需要一并提交。
+
+# ---------- Docker 离线部署包 ----------
+dist-bundle/
+dist-bundle.zip

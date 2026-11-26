@@ -57,3 +57,35 @@ jobs:
 
       - name: 生产构建
         run: npx vite build
+
+  docker:
+    name: Docker 部署校验
+    runs-on: ubuntu-latest
+    # 本机没有 Docker，镜像构建未在本地验证过；先在 CI 上跑通再决定是否设为阻塞项。
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 校验 compose 配置
+        run: docker compose config -q
+
+      - name: 构建后端镜像
+        run: docker build -f deploy/Dockerfile.api -t customer-insight-api:test .
+
+      - name: 构建前端镜像
+        run: docker build -f deploy/Dockerfile.web -t customer-insight-web:test .
+
+      - name: 起容器并探活
+        run: |
+          cp deploy/docker-compose.bundle.yml docker-compose.ci.yml
+          sed -i 's#customer-insight-api:1.0.0#customer-insight-api:test#; s#customer-insight-web:1.0.0#customer-insight-web:test#' docker-compose.ci.yml
+          docker compose -f docker-compose.ci.yml up -d
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8080/api/health > /dev/null; then
+              echo "后端健康检查通过"; break
+            fi
+            sleep 5
+          done
+          curl -fsS http://localhost:8080/ | head -n 5
+          curl -fsS http://localhost:8080/api/insights | head -c 200
+          docker compose -f docker-compose.ci.yml down -v
