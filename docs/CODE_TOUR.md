@@ -100,7 +100,7 @@ customer-insight-agent/
 │   ├── prepare_data.py            # 下载(或 --xlsx 读本地 Excel) + 清洗 + 生成 Excel/CSV/meta
 │   ├── export_report.py           # 生成分析报告 Excel（9 个 sheet）
 │   ├── export_openapi.py          # 导出 OpenAPI / Postman 给 Apifox 用
-│   └── serve_frontend.py          # 无 Node 时的静态站点 + /api 反代
+│   └── (前端由 deploy/nginx.conf 托管，没有其它静态服务脚本)
 └── docs/                          # README 之外的说明文档都在这里
 ```
 
@@ -521,7 +521,7 @@ python scripts/export_report.py
 | --- | --- | --- |
 | `ModuleNotFoundError: fastapi` | 没装依赖 / 用错解释器 | 激活 venv 后再跑，见 README |
 | 前端 `无法连接后端` | 后端没启动或端口不对 | 先 `python backend/run.py`，确认 8000 端口 |
-| 页面空白 + 控制台 404 | 构建后没起静态服务器 | `python scripts/serve_frontend.py` |
+| 页面空白 + 控制台 /assets 404 | Nginx 的 root 没指向 frontend/dist | 看 `deploy/README.md` 排障表，`nginx -t` 后 reload |
 | `pydantic_core` 版本冲突 | 混用了不同 Python 版本的包 | 删掉旧的 `.deps`/重装 venv |
 
 ---

@@ -84,13 +84,16 @@ customer-insight-agent/
 │   ├── src/pages/                 # 总览/自动结论/分层/画像/预测/方案/对话/数据说明
 │   ├── src/components/            # ECharts 封装、通用 UI
 │   ├── src/lib/                   # API 封装（支持 VITE_API_BASE）、格式化与配色
-│   ├── dist/                      # 已构建产物（可用 serve_frontend.py 直接托管）
+│   ├── dist/                      # 已构建产物（由 Nginx 托管）
 │   └── vite.config.js             # dev 代理 /api → 8000
 ├── scripts/
 │   ├── prepare_data.py            # 多镜像下载 → 清洗 → 生成 Excel/CSV/字段元数据
 │   ├── export_report.py           # 生成《客户洞察分析报告》Excel（含图表）
 │   ├── export_openapi.py          # 导出 OpenAPI / Postman 集合（导入 Apifox）
-│   └── serve_frontend.py          # 无 Node 环境下的静态站点 + /api 反向代理
+│   └── export_openapi.py          # 导出 OpenAPI / Postman 集合（导入 Apifox）
+├── deploy/
+│   ├── nginx.conf                 # ★ 前端部署配置（静态站点 + /api 反代）
+│   └── README.md                  # Nginx 部署步骤与排障表
 ├── docs/
 │   ├── PROJECT_GUIDE.md           # 项目讲解稿（架构、算法、演示、答辩问答）
 │   ├── CODE_TOUR.md               # ★ 代码导读（逐文件讲清"为什么这么写"）
@@ -125,27 +128,41 @@ python scripts/prepare_data.py
 python backend/run.py
 ```
 
-### 启动前端（前后端分离）
+### 启动前端（Nginx 托管，前后端分离）
+
+前端**只用 Nginx 部署**：Nginx 托管 `frontend/dist`，并把 `/api/` 反代到后端 8000，浏览器只访问一个地址。
 
 ```bash
-# 开发模式（热更新）
+# 1. 构建（已有 dist 可跳过；改了前端源码才需要）
 cd frontend
-npm install
-npm run dev                         # http://127.0.0.1:5173，/api 自动代理到 8000
+npm install && npm run build        # 产物在 frontend/dist
 
-# 或：不装 Node 也能看页面（纯标准库静态服务 + /api 反代）
-python scripts/serve_frontend.py    # http://127.0.0.1:5173
+# 2. 装 Nginx（Windows）
+winget install --id nginxinc.nginx -e --source winget
+
+# 3. 起 Nginx（前缀目录就是 deploy/）
+cd ../deploy
+New-Item -ItemType Directory -Force logs, temp | Out-Null
+nginx -p "D:/projects/customer-insight-agent/deploy" -c nginx.conf -t      # 检查配置
+nginx -p "D:/projects/customer-insight-agent/deploy" -c nginx.conf         # 启动
 ```
+
+改配置后重载：`nginx -p <deploy 目录> -c nginx.conf -s reload`；停止：把 `-s reload` 换成 `-s stop`。
+完整步骤、Linux/systemd 部署与排障表见 **[deploy/README.md](deploy/README.md)**。
+
+> 开发调试才用 `cd frontend && npm run dev`（5173，热更新，Vite 自动代理 /api）；
+> **部署与演示统一走 Nginx**，不需要其它静态服务器。
 
 | 地址 | 内容 |
 | --- | --- |
-| http://127.0.0.1:5173 | 前端界面（dev 或 serve_frontend.py） |
-| http://127.0.0.1:8000/docs | Swagger 交互式 API 文档 |
-| http://127.0.0.1:8000/redoc | ReDoc 文档 |
+| http://127.0.0.1:8080 | 前端界面（Nginx 托管 dist + 反代 /api） |
+| http://127.0.0.1:8080/docs | Swagger 交互式 API 文档（经 Nginx 反代） |
+| http://127.0.0.1:8000/docs | 直连后端的 Swagger / ReDoc |
 | http://127.0.0.1:8000/api/health | 健康检查（数据规模、模型状态、在线/离线模式） |
 
-> **前端连哪个后端**：开发模式由 Vite 代理；独立部署时构建前设
-> `VITE_API_BASE=https://your-api.com/api`，后端 `config.py` 的 CORS 白名单同步放行该域名。
+> **前端连哪个后端**：经 Nginx 反代后是同源，不需要 `VITE_API_BASE`；若前端要部署到
+> 与后端不同的域名，构建前设 `VITE_API_BASE=https://your-api.com/api`，
+> 并把该域名加进 `backend/app/core/config.py` 的 CORS 白名单。
 
 ### 用 Apifox 管理接口
 
@@ -369,7 +386,7 @@ python scripts/export_openapi.py       # 导出 OpenAPI / Postman 给 Apifox
 A：手写能讲清楚原理，但生产项目更该用经过验证的实现——`StandardScaler` 防数据泄漏、`precision_recall_curve` 比手写阈值循环更准、`class_weight` 处理不平衡是标准做法。算法原理在 [`docs/GLOSSARY.md`](docs/GLOSSARY.md) 里讲透，代码交给库，**两者不冲突**。
 
 **Q：为什么前后端分离而不是后端托管前端？**
-A：分离后前端可独立部署（Nginx / Vercel / 对象存储）、独立回滚，后端只提供 JSON API，也便于接 App / 小程序。本地演示用 `scripts/serve_frontend.py` 一个命令搞定。
+A：分离后前端可独立部署与独立回滚，后端只提供 JSON API，也便于接 App / 小程序。部署统一走 Nginx（`deploy/nginx.conf`）：静态资源由 Nginx 直接托管，`/api/` 反代到 FastAPI，同源无 CORS；演示时也是这一套，不需要额外的静态服务器进程。
 
 **Q：为什么客群聚类只有 4 类、轮廓系数只有 0.22？**
 A：k 由轮廓系数与肘部法共同确定。消费类数据本身特征高度相关（收入、消费、频次天然正相关），轮廓系数不会很高，0.2 左右是这类数据的正常范围——**如实说明比硬凑一个好看的数字更专业**。

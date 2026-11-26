@@ -57,5 +57,5 @@ def root() -> dict:
         "openapi": "/openapi.json",
         "api": "/api/overview",
         "agent": "/api/agent/chat",
-        "note": "本项目前后端分离：前端由 Vite dev server 或独立静态服务器（scripts/serve_frontend.py / Nginx）提供。",
+        "note": "本项目前后端分离：前端由 Nginx 托管（deploy/nginx.conf），/api 反代到本服务。",
     }

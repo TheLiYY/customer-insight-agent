@@ -18,6 +18,9 @@ frontend/.vite/
 .tmp/
 tmp/
 *.tmp
+# ---------- Nginx 运行时目录 ----------
+deploy/logs/
+deploy/temp/
 
 # ---------- 编辑器 / 系统 ----------
 .vscode/
