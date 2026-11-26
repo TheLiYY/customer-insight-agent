@@ -86,7 +86,8 @@ customer-insight-agent/
 │   │       └── routes.py          # /api/agent/chat
 │   ├── data/raw/                  # 原始 CSV + 给业务看的 Excel
 │   ├── data/processed/            # 清洗后的 customers.csv + 报告 xlsx
-│   └── tests/smoke_test.py        # 21 项冒烟测试
+│   ├── tests/smoke_test.py        # 21 项接口/对话冒烟测试
+│   └── tests/test_contract.py     # 52 项数据契约测试
 ├── frontend/
 │   ├── vite.config.js             # dev 代理 /api → 8000
 │   └── src/
@@ -570,6 +571,9 @@ python -c "import sys; sys.path.insert(0,'backend'); from app.core.store import 
 
 # 2. 跑全量冒烟测试
 python backend/tests/smoke_test.py
+
+# 2.1 只想看「换数据后字段还认得对不对」
+python backend/tests/test_contract.py
 
 # 3. 看某个接口的原始 JSON
 python -c "import sys,json; sys.path.insert(0,'backend'); from fastapi.testclient import TestClient; from app.main import app; print(json.dumps(TestClient(app).get('/api/propensity').json(), ensure_ascii=False, indent=2)[:2000])"

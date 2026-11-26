@@ -308,7 +308,7 @@ python scripts/prepare_data.py --dataset bank                 # 内置第三套�
 - 阈值搜索（4.3 节）：强调「阈值不是拍的，用 PR 曲线取 F1 最优」
 - 关联规则局限（4.4 节）：主动说弱项，展示批判性思考
 - 自动结论（4.5 节）：这是"分析 → 决策"的关键一环
-- 工程细节：单例懒计算缓存、21 个用例冒烟测试、CI 三版本 Python 矩阵、OpenAPI/Apifox 导入、Excel 报告导出
+- 工程细节：单例懒计算缓存、21 个用例冒烟测试 + 52 项数据契约测试、CI 三版本 Python 矩阵、OpenAPI/Apifox 导入、Excel 报告导出
 
 ---
 

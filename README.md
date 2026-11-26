@@ -79,6 +79,7 @@ customer-insight-agent/
 │   │   ├── raw/                   # 原始数据 + 原始数据 Excel（含字段字典）
 │   │   └── processed/             # 清洗后客户宽表、字段元数据、分析报告 Excel
 │   ├── tests/smoke_test.py        # 21 个接口/对话用例冒烟测试
+│   ├── tests/test_contract.py     # 52 项契约层用例（换数据后识别是否还准）
 │   ├── requirements.txt
 │   └── run.py                     # python backend/run.py 一键启动
 ├── frontend/                      # 独立前端工程
@@ -90,7 +91,9 @@ customer-insight-agent/
 ├── scripts/
 │   ├── prepare_data.py            # 下载/读本地表/Excel → 自动识别字段 → 清洗 → 生成 Excel/CSV/元数据
 │   ├── export_report.py           # 生成《客户洞察分析报告》Excel（含图表）
-│   └── export_openapi.py          # 导出 OpenAPI / Postman 集合（导入 Apifox）
+│   ├── export_openapi.py          # 导出 OpenAPI / Postman 集合（导入 Apifox）
+│   ├── dev-start.ps1              # ★ 一键起后端 + Nginx（自动清旧进程、建 nginx 目录）
+│   └── dev-stop.ps1               # 一键停掉后端与 Nginx
 ├── deploy/
 │   ├── nginx.conf                 # ★ 本机 Nginx 部署配置（静态站点 + /api 反代）
 │   ├── README.md                  # Nginx 部署步骤与排障表
@@ -117,6 +120,19 @@ customer-insight-agent/
 ---
 
 ## 4. 快速开始
+
+### 一键启动（Windows，推荐）
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\dev-start.ps1   # 起后端 8000 + Nginx 8080
+powershell -ExecutionPolicy Bypass -File scripts\dev-stop.ps1    # 全部停掉
+```
+
+脚本按顺序做这几件事：检查数据（没有就先生成）→ 清掉占用 8000 的旧进程 → 起后端并等健康检查通过 →
+**清掉残留的旧 nginx 进程**（最容易踩的坑：旧配置的 nginx 还在占 8080，看起来像"改配置没生效"）→
+补齐 nginx 需要的 `logs/`、`temp/` 目录 → 起 Nginx → 探活。参数：`-NoNginx`（只起后端）、`-BackendPort 8010`（换端口）。
+
+以下是手动方式，便于理解每一步在做什么。
 
 ### 方式 A：Conda（推荐）
 
@@ -178,6 +194,9 @@ nginx -p "D:/projects/customer-insight-agent/deploy" -c nginx.conf         # 启
 
 改配置后重载：`nginx -p <deploy 目录> -c nginx.conf -s reload`；停止：把 `-s reload` 换成 `-s stop`。
 完整步骤、Linux/systemd 部署与排障表见 **[deploy/README.md](deploy/README.md)**。
+
+> 懒得手动敲？`powershell -ExecutionPolicy Bypass -File scripts\dev-start.ps1` 会自动完成上面三步，
+> 并顺手清掉残留的旧 nginx 进程。
 
 > 开发调试才用 `cd frontend && npm run dev`（5173，热更新，Vite 自动代理 /api）；
 > **部署与演示统一走 Nginx**，不需要其它静态服务器。
@@ -413,11 +432,25 @@ python backend/run.py
 
 ```bash
 python backend/tests/smoke_test.py     # 21 个接口/对话用例，不启动服务器
+python backend/tests/test_contract.py  # 52 项契约层用例：换数据后字段识别还对不对
 python scripts/export_report.py        # 导出《客户洞察分析报告》Excel
 python scripts/export_openapi.py       # 导出 OpenAPI / Postman 给 Apifox
 ```
 
 冒烟测试覆盖：13 个 GET 接口 + 8 条自然语言对话（意图是否命中正确工具），当前 **21/21 通过**。
+
+契约层测试用**现场造表**的方式验证 6 类真实场景，当前 **52/52 通过**：
+
+| 用例 | 验证什么 |
+| --- | --- |
+| iFood 宽表 | 数值列识别、one-hot 学历反解、`Kidhome+Teenhome` 合并、渠道相加得频次 |
+| 订单明细表 | 判成 transaction 粒度、按客户聚合消费额/频次/最近间隔、品类透视 |
+| 中文列名表 | 「客户编号/年龄/年收入/消费金额」全家桶能直接认出来 |
+| 文本二值标签 | `y = yes/no` 能当响应标签（UCI Bank Marketing 那种） |
+| 极简表 | 只有年龄+性别时不崩、能力降级、RFM 补零并给警告 |
+| 自定义别名 | 加一行别名后「薪资等级」这类怪列名立刻能被认成收入 |
+
+这两组测试都不需要网络、不需要起服务器，所以 CI 里是硬性门禁。
 
 ---
 

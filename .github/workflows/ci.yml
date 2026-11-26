@@ -33,6 +33,16 @@ jobs:
       - name: 冒烟测试（21 个接口/对话用例）
         run: python backend/tests/smoke_test.py
 
+      - name: 契约层测试（52 项，验证换数据后字段识别）
+        run: python backend/tests/test_contract.py
+
+      - name: 换数据降级验证（Mall Customers，无金额/无响应标签）
+        continue-on-error: true   # 依赖 jsDelivr 网络，失败不阻塞
+        run: |
+          python scripts/prepare_data.py --dataset mall --refresh
+          python backend/tests/smoke_test.py
+          python scripts/prepare_data.py --refresh
+
       - name: 导出分析报告（验证 xlsx 生成链路）
         run: python scripts/export_report.py
 

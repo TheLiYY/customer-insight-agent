@@ -13,6 +13,19 @@
 
 ## 一、Windows（本机演示）
 
+### 0. 一条命令搞定（推荐）
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\dev-start.ps1   # 后端 + Nginx 一起起
+powershell -ExecutionPolicy Bypass -File scripts\dev-stop.ps1    # 一起停
+```
+
+脚本会依次：检查/生成数据 → 清掉占用 8000 的旧进程 → 起后端并等健康检查 →
+清掉所有残留 nginx（**这一步很关键**，见下方"坑"）→ 建 `logs/`、`temp/` 目录 →
+`nginx -t` 检查 → 启动 → 访问 <http://127.0.0.1:8080> 探活。
+
+下面的手工步骤留着，用来理解每一步在做什么、或者在没有 PowerShell 的机器上照做。
+
 ### 1. 先装 Nginx（已装过可跳过）
 
 ```powershell
@@ -128,3 +141,7 @@ sudo systemctl daemon-reload && sudo systemctl enable --now customer-insight-api
 | 启动报 `CreateDirectory() ... temp\client_body_temp failed` | 没有 `temp` 目录 | `New-Item -ItemType Directory -Force logs, temp` 后重试 |
 | 启动报 `bind() to 0.0.0.0:8080 failed (10048)` | 8080 被占用 | `Get-NetTCPConnection -LocalPort 8080` 找到进程，或换端口 |
 | 改了配置没生效 | 没 reload | `nginx -p ... -c nginx.conf -s reload` |
+| 改了配置 / 重启后行为还是旧的，`/api/capabilities` 之类新接口 404 | **机器上还残留着旧 nginx 进程**，8080 实际由最早那个旧配置在服务 | `Get-Process nginx` 看是否有一堆；`Get-Process nginx \| Stop-Process -Force` 全清后重新启动（本机踩过：残留 40+ 个进程，看起来像"新配置没生效"） |
+
+> Windows 上 `worker_processes auto` 会按 CPU 核数开 worker，所以 `Get-Process nginx` 看到十几二十个进程是正常的；
+> 异常的是**同时存在多个 master**（启动时间不同）。`scripts\dev-start.ps1` / `dev-stop.ps1` 已经处理了这个情况。
