@@ -1,0 +1,28 @@
+# 统一换行符，避免 Windows / Linux / GitHub 之间来回改动整个文件
+* text=auto eol=lf
+
+# Windows 脚本用 CRLF，否则老版本 PowerShell 可能解析异常
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# 二进制文件：不要让 git 做换行符转换
+*.xlsx binary
+*.xls binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.zip binary
+*.tar binary
+
+# 数据产物虽然是文本，但内容随数据集变化，diff 没意义
+backend/data/raw/*.csv -diff
+backend/data/processed/*.csv -diff
+docs/openapi.json linguist-generated=true
+docs/API.postman.json linguist-generated=true
+frontend/dist/** linguist-generated=true
