@@ -1,10 +1,12 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// 开发时把 /api 转发到本地 FastAPI（8000 端口），生产环境由 FastAPI 直接托管 dist
+// 前后端分离部署：
+//   - 开发：前端 dev server 5173，把 /api 代理到后端 8000
+//   - 生产：dist 单独部署到任意静态服务器（Nginx / scripts/serve_frontend.py），
+//     通过 VITE_API_BASE 指定后端地址，后端不再托管前端
 export default defineConfig({
-  // 生产构建由 FastAPI 挂载在 /app 下托管，因此资源前缀要跟着改
-  base: '/app/',
+  base: '/',
   plugins: [react()],
   server: {
     port: 5173,
