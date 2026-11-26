@@ -43,7 +43,7 @@ Docker 把这些打包成一个**不可变的镜像**，目标机器只要有 Do
 ┌─────────────────────────────────────────────┐
 │ api 容器（python:3.13-slim）                 │
 │   uvicorn app.main:app  → 0.0.0.0:8000      │
-│   内置 1867 行清洗后数据 + sklearn/mlxtend   │
+│   内置 2021 行清洗后数据 + sklearn/mlxtend   │
 └─────────────────────────────────────────────┘
 ```
 
@@ -153,19 +153,39 @@ docker compose up -d          # 启动
 
 `docker compose up -d` 生效。
 
-### 用自己的 Excel 数据训练
+### 换成自己的客户数据
+
+数据是**自动识别列名**的（中英文都行），不需要先改成 iFood 那套表头：
 
 ```bash
 mkdir data
 copy 你的客户表.xlsx data\my_customers.xlsx          # 或 cp
 docker compose cp ./data/my_customers.xlsx api:/data/my_customers.xlsx
-docker compose exec api python /app/scripts/prepare_data.py --xlsx /data/my_customers.xlsx
+docker compose exec api python /app/scripts/prepare_data.py --file /data/my_customers.xlsx
 docker compose restart api
 ```
 
-`prepare_data.py --xlsx` 会校验列名（40 个字段缺一个就直接报错并列出缺哪些），
-处理完把 `backend/data/processed/customers.csv` 覆盖为新的数据，重启后所有页面、模型、
-结论都会基于新数据重新计算。
+跑完会把 `backend/data/processed/customers.csv` 覆盖成新数据，重启后所有页面、模型、
+结论都基于新数据重新计算。
+
+- 少数列名认不出来时，去 `backend/app/core/schema.py` 的 `STANDARD_FIELDS` 里补别名；
+  也可以先在下文「构建期重新生成数据」之前把文件放进 `backend/data/raw/`。
+- 表里没有金额 / 没有响应标签也能跑：后端会输出能力开关（`capabilities`），前端自动隐藏算不出来的图。
+  详细规则见仓库根目录的 [`docs/DATA.md`](../docs/DATA.md)。
+- 也可以直接换成内置的另外两套数据验证降级效果：
+  `docker compose exec api python /app/scripts/prepare_data.py --dataset mall`。
+
+### 构建期重新生成数据（默认行为）
+
+`deploy/Dockerfile.api` 里有一行 `RUN python /app/scripts/prepare_data.py`，
+它在**构建时**用镜像内的原始 CSV 重新算一遍，保证「镜像里的数据」和「代码版本」永远一致，
+不会出现代码改了、数据还是旧的。这一步不联网（走本地缓存）。
+
+想换数据源，把 `Dockerfile.api` 那一行改成：
+
+```dockerfile
+RUN python /app/scripts/prepare_data.py --file /app/backend/data/raw/我的表.csv
+```
 
 > 想接在线大模型：取消 `docker-compose.yml` 里 `LLM_BASE_URL / LLM_API_KEY / LLM_MODEL` 的注释，
 > 不配就是「离线规则模式」，功能完整可用。

@@ -55,6 +55,30 @@
       ]
     },
     {
+      "name": "其他",
+      "item": [
+        {
+          "name": "Get Capabilities",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/capabilities",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "capabilities"
+              ]
+            },
+            "description": "Get Capabilities"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "数据总览",
       "item": [
         {

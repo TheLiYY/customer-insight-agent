@@ -15,7 +15,7 @@
 
 | 业务问题 | 项目里的答案 | 对应页面 / 接口 |
 | --- | --- | --- |
-| 我的客户都是什么人？ | 26 个字段的客户宽表 + 分布看板 + 相关系数热力图 | `数据总览` / `GET /api/overview` |
+| 我的客户都是什么人？ | 客户宽表 + 分布看板 + 相关系数热力图 | `数据总览` / `GET /api/overview` |
 | 分析跑完了，结论是什么？ | **10 条自动结论**（机会 / 风险 / 洞察）+ 证据 + 行动清单 | `自动结论` / `GET /api/insights` |
 | 哪些客户值钱、哪些要流失？ | 8 类 RFM 分层（R/F/M 各 1–5 分）+ 分层矩阵 + 各层策略 | `客户分层` / `GET /api/segments` |
 | 客户能分成几种人？ | K-Means 聚类成 4 类客群，自动命名 + 画像标签 + 偏好品类/渠道 | `客户画像` / `GET /api/personas` |
@@ -25,10 +25,10 @@
 
 **当前数据下的核心结论（可复现）**
 
-- **1867 位**清洗后客户，历史营收 **1,054,533 元**；前 20% 客户贡献了 **53.5%** 的营收。
-- 最近一次营销活动**基线响应率 15.48%**（289 人响应）；响应模型按概率排序后，**前 10% 人群响应率是平均水平的 4.32 倍**。
-- 模型 **AUC 0.8565**，阈值 0.59 下：准确率 0.850 / 精确率 0.513 / 召回率 0.701 / F1 0.592。
-- 聚类 k=4（轮廓系数 0.2167）：核心高价值客群 629 人、潜力成长客群 466 人、长尾基础客群 435 人（沉默预警）、稳定贡献客群 337 人。
+- **2021 位**清洗后客户，历史营收 **1,054,533 元**；前 20% 客户贡献了 **53.6%** 的营收。
+- 最近一次营销活动**基线响应率 15.39%**（311 人响应）；响应模型按概率排序后，**前 10% 人群响应率是平均水平的 4.51 倍**。
+- 模型 **AUC 0.8827**，阈值 0.78 下：准确率 0.891 / 精确率 0.690 / 召回率 0.527 / F1 0.5976。
+- 聚类 k=4（轮廓系数 0.2163）：核心高价值客群 687 人、潜力成长客群 508 人、长尾基础客群 465 人（沉默预警）、稳定贡献客群 361 人。
 - 品类关联最强的是 **甜食 → 鱼类**（支持度 73.3%、置信度 90.0%、提升度 1.09）；品类渗透率普遍在 90% 以上，所以 lift 不高——**这一点在结论里如实写出，并转成"组合套餐"建议**，而不是夸大规则价值。
 - 风险项：**23.7% 客户超 75 天未下单**；折扣依赖 18.5%；投诉率 1.0%。
 
@@ -56,7 +56,7 @@ customer-insight-agent/
 ├── backend/                       # 纯 API 服务（不托管前端）
 │   ├── app/
 │   │   ├── main.py                # FastAPI 实例、CORS、异常兜底
-│   │   ├── api/routes.py          # 14 个分析 REST 接口
+│   │   ├── api/routes.py          # 14 个分析 REST 接口 + /api/capabilities
 │   │   ├── agent/                 # Agent：工具注册、编排、对话接口
 │   │   │   ├── tools.py           # 8 个分析工具 + 4 种渲染块
 │   │   │   ├── orchestrator.py    # 在线 LLM 编排 + 离线规则引擎
@@ -71,7 +71,8 @@ customer-insight-agent/
 │   │       ├── campaign.py        # 营销方案生成（圈人/选品/渠道/ROI）
 │   │       ├── overview.py        # 总览指标与分布
 │   │       ├── store.py           # 结果仓库单例（懒计算 + 缓存）
-│   │       ├── dataset.py         # 读取清洗后数据与字段字典
+│   │       ├── schema.py          # ★ 数据契约层：任意客户表 → 标准客户字段
+│   │       ├── dataset.py         # 数据注册中心：读清洗结果 + 能力开关（capabilities）
 │   │       ├── config.py          # 路径、字段中文映射、环境变量
 │   │       └── utils.py           # 数值清洗、百分比等工具
 │   ├── data/
@@ -87,7 +88,7 @@ customer-insight-agent/
 │   ├── dist/                      # 已构建产物（由 Nginx 托管）
 │   └── vite.config.js             # dev 代理 /api → 8000
 ├── scripts/
-│   ├── prepare_data.py            # 多镜像下载 → 清洗 → 生成 Excel/CSV/字段元数据
+│   ├── prepare_data.py            # 下载/读本地表/Excel → 自动识别字段 → 清洗 → 生成 Excel/CSV/元数据
 │   ├── export_report.py           # 生成《客户洞察分析报告》Excel（含图表）
 │   └── export_openapi.py          # 导出 OpenAPI / Postman 集合（导入 Apifox）
 ├── deploy/
@@ -105,6 +106,7 @@ customer-insight-agent/
 │   ├── PROJECT_GUIDE.md           # 项目讲解稿（架构、算法、演示、答辩问答）
 │   ├── CODE_TOUR.md               # ★ 代码导读（逐文件讲清"为什么这么写"）
 │   ├── GLOSSARY.md                # ★ 术语词典（热力图怎么读、AUC/Lift 是什么）
+│   ├── DATA.md                    # ★ 换数据指南（别名表、映射置信度、能力降级）
 │   ├── API.md                     # 接口字段说明
 │   ├── openapi.json               # OpenAPI 3.1（Apifox / Swagger 可导入）
 │   └── API.postman.json           # Postman v2.1 集合（Apifox 可导入）
@@ -223,36 +225,58 @@ python scripts/export_openapi.py     # 生成 docs/openapi.json + docs/API.postm
 
 | 文件 | 用途 |
 | --- | --- |
-| `backend/data/raw/ifood_df.csv` | 原始宽表（2205 × 39），Excel 可直接打开 |
+| `backend/data/raw/ifood.csv` | 原始宽表（2205 × 39），Excel 可直接打开；同时是离线缓存（换数据后这里会变成 `mall.csv` / `bank.csv`） |
 | `backend/data/raw/Customer_Personality_Analysis.xlsx` | **数据源 Excel**（客户明细 / 字段字典 / 数据来源），业务方可直接核对 |
-| `backend/data/processed/customers.csv` | 清洗后建模用宽表（1867 × 26），Excel 可直接打开 |
+| `backend/data/processed/customers.csv` | 清洗后建模用宽表（2021 × 25），Excel 可直接打开 |
 | `backend/data/processed/Customer_Insight_Report.xlsx` | **分析结果 Excel**（9 个 sheet + 4 张原生图表），给不看网页的人看 |
 
 > 两个 Excel 只是"可交付的落地形式"；模型训练与测试读的是 `customers.csv`，
-> 由 `prepare_data.py` 从 2205 行原始数据清洗而来（去重 184 行、剔除收入缺失 154 行）。
+> 由 `prepare_data.py` 从 2205 行原始数据清洗而来（去重 184 行 → 2021 行有效客户）。
 
-**想完全用自己手上的 Excel 训练？** 直接把 Kaggle 原始表（或同表头的公司数据）另存为 `.xlsx`，然后：
+**想完全用自己手上的 Excel 训练？** 直接把表丢进去就行，列名不用改：
 
 ```bash
-python scripts/prepare_data.py --xlsx "D:/你的数据/客户数据.xlsx"
-# 指定工作表：python scripts/prepare_data.py --xlsx 客户数据.xlsx --sheet 客户明细
+python scripts/prepare_data.py --file "D:/你的数据/客户数据.xlsx"
+# 指定工作表：python scripts/prepare_data.py --file 客户数据.xlsx --sheet 客户明细
 ```
 
-脚本会把 Excel 转存成 `backend/data/raw/ifood_df.csv`，再走**同一套清洗 + 建模流程**，
-所以「Excel 数据」和「联网下载的数据」跑出来的结果完全一致（已验证 SHA256 相同）。
-表头必须是 Kaggle 原始列名（`Age`/`Income`/`Mnt*`/`Response`…），缺列会直接提示缺哪几列。
+脚本会读取 Excel、自动识别列名（中英文都行）、清洗建模，
+所以「Excel 数据」和「联网下载的数据」走的是**同一条流水线**。
+
+### 5.4 换一份数据也能跑（数据契约层）
+
+这件事不是"表头必须和 Kaggle 一样"，而是**任意客户表都能跑**：
+
+```bash
+python scripts/prepare_data.py --dataset mall      # 商场会员：只有年龄/性别/收入/消费评分
+python scripts/prepare_data.py --dataset bank      # 银行营销：有 y 响应标签、没有金额
+python scripts/prepare_data.py --file 我的客户表.xlsx
+```
+
+`backend/app/core/schema.py` 是一个**数据契约层**：把任意列名翻译成项目内部的标准字段（`customer_id` / `income` / `recency` / `total_spend` / `response`…，再按实际数据补上品类、渠道列），
+翻译不了的就标记为"缺失"，下游模块自动降级——没有金额就不算 ROI、没有响应标签就不做响应预测，而不是报错。
+
+换数据后前端会自动调整：总览页隐藏算不出来的图，响应预测页显示说明卡，数据说明页展示字段映射与未使用的列。
+
+| 内置数据集 | 有效客户 | 能算什么 |
+| --- | --- | --- |
+| iFood（默认） | 2021 | 全部能力 |
+| Mall Customers | 200 | 画像 / 聚类（无金额、无响应） |
+| Bank Marketing | 4119 | 画像 / 聚类 / 响应预测（无金额） |
+
+细节（别名表、`mapping.json` 怎么看、订单明细自动聚合、怎么加自己的别名）：见 **[`docs/DATA.md`](docs/DATA.md)**。
 
 ### 5.3 清洗规则（`scripts/prepare_data.py`）
 
 | 处理 | 规则 |
 | --- | --- |
-| 主键 | 生成 `customer_id`（C00001…），便于对话里点名查询 |
+| 主键 | 自动识别客户编号；没有就生成 `customer_id`（C00001…），便于对话里点名查询 |
 | 年龄 | `Age` 截断到 18–90，并按 18–30 / 31–40 / 41–50 / 51–60 / 60+ 分箱 |
 | 收入 | 上截断到 99 分位，避免极端值拉偏聚类 |
 | 婚姻 / 教育 | 从 one-hot 反解为单列分类（并映射中文：本科 / 硕士 / 博士…） |
-| 消费 | 六个 `Mnt*` 品类 → 统一 `mnt_*` 命名，`total_spend` 为总消费 |
-| 频次 | `purchase_freq` = 线上 + 目录 + 门店购买次数 |
-| 标签 | `response` 为最近一次营销活动是否响应（0/1），即预测目标 |
+| 消费 | 六个 `Mnt*` 品类 → 统一 `mnt_*` 命名，`total_spend` 为总消费；品类列是**自动识别**的，换数据也能认 |
+| 频次 | `purchase_freq` = 线上 + 目录 + 门店购买次数；没有渠道列时用订单数或"有消费记 1 次"兜底 |
+| 标签 | `response` 为最近一次营销活动是否响应（0/1），即预测目标；没有该列则响应预测自动关闭 |
 
 > 两个 Excel 使用固定文档时间戳生成：同一份数据重复运行，产物字节完全一致，放进 git 不会出现无意义的二进制改动。
 
@@ -277,7 +301,7 @@ centers = scaler.inverse_transform(model.cluster_centers_)   # 还原成业务�
 
 - 特征：收入、总消费、购买频次、最近购买间隔、折扣购买数、月访问次数、年龄（标准化后）
 - 客群按 `0.5·z(消费) + 0.3·z(频次) − 0.2·z(间隔)` 排名自动命名（核心高价值 → 长尾基础）
-- 当前结果：**k=4，轮廓系数 0.2167**，肘部曲线见 `/api/clusters/elbow`
+- 当前结果：**k=4，轮廓系数 0.2163**，肘部曲线见 `/api/clusters/elbow`
 
 ### 6.3 响应概率预测（scikit-learn 逻辑回归）
 
@@ -285,7 +309,7 @@ centers = scaler.inverse_transform(model.cluster_centers_)   # 还原成业务�
 pipe = Pipeline([("scaler", StandardScaler()),
                  ("lr", LogisticRegression(class_weight="balanced", C=1.0, max_iter=2000))])
 prec, rec, thr = precision_recall_curve(y_val, prob_val)
-best = thr[np.argmax(2*prec*rec/(prec+rec+1e-12))]   # F1 最大处取阈值 → 0.59
+best = thr[np.argmax(2*prec*rec/(prec+rec+1e-12))]   # F1 最大处取阈值 → 0.78
 ```
 
 - 13 个特征：收入、年龄、消费、频次、最近间隔、折扣依赖、月访问、孩童年数、历史活动接受数、品类偏好占比等
@@ -332,7 +356,7 @@ rules   = association_rules(freq, metric="confidence", min_threshold=0.15)
 4. **时机**：按平均最近购买间隔分「本周三 19:00–21:00 / 一周内 / 两周内」三档
 5. **ROI**：`预计营收 = 圈选人数 × 平均响应概率 × 客单价`，`ROI = 预计营收 ÷ 触达成本`
 
-示例（核心高价值客群，预算 2000 元，单客 8 元）：圈选 250 人 → 预计响应 200 人 → 预计营收 15,386 元 → **ROI 6.69**。
+示例（核心高价值客群，预算 2000 元，单客 8 元）：圈选 250 人 → 预计响应 209 人 → 预计营收 16,388 元 → **ROI 7.19**。
 
 ---
 
@@ -365,13 +389,14 @@ python backend/run.py
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | GET | `/api/health` | 健康检查、数据规模、在线/离线模式 |
-| GET | `/api/dataset` | 数据来源、行列数、26 个字段字典 |
+| GET | `/api/dataset` | 数据来源、行列数、字段字典、**字段自动映射**、未使用列、预处理提醒 |
+| GET | `/api/capabilities` | **能力开关**：这份数据能算画像/聚类/响应预测/关联规则吗 |
 | GET | `/api/overview` | KPI、年龄/学历/婚姻/收入分布、品类与渠道、响应率、相关系数矩阵 |
 | GET | `/api/insights` | **自动结论**（可按 `severity` / `category` 过滤） |
 | GET | `/api/segments` | RFM 8 分层明细、F×M 矩阵、营收矩形树图 |
 | GET | `/api/personas` | 聚类结果、轮廓系数、4 个客群画像与标签 |
 | GET | `/api/clusters/elbow?k_max=6` | 不同 k 的肘部曲线与轮廓系数 |
-| GET | `/api/propensity` | 模型指标、特征系数、Lift 表、高潜客户 Top 名单 |
+| GET | `/api/propensity` | 模型指标、特征系数、Lift 表、高潜客户 Top 名单；无响应标签时返回 `available=false` |
 | GET | `/api/association` | 品类关联规则、渗透率与客单价 |
 | GET | `/api/customers` | 客户明细分页（支持筛选、排序） |
 | GET | `/api/customers/{id}` | 单个客户详情 |
@@ -402,8 +427,9 @@ python scripts/export_openapi.py       # 导出 OpenAPI / Postman 给 Apifox
 | --- | --- | --- |
 | [`docs/GLOSSARY.md`](docs/GLOSSARY.md) | 你自己 / 答辩听众 | AUC、Lift、轮廓系数、热力图、置信度……**每个术语都配本项目真实数字和"怎么讲"话术** |
 | [`docs/CODE_TOUR.md`](docs/CODE_TOUR.md) | 你自己 / 面试官 | 逐个文件讲清职责、执行链路、为什么这么设计；含二次开发手册 |
-| [`docs/PROJECT_GUIDE.md`](docs/PROJECT_GUIDE.md) | 汇报现场 | 30 秒 / 3 分钟 / 8 分钟三套讲稿 + 13 个高频追问 |
+| [`docs/PROJECT_GUIDE.md`](docs/PROJECT_GUIDE.md) | 汇报现场 | 30 秒 / 3 分钟 / 8 分钟三套讲稿 + 14 个高频追问 |
 | [`docs/API.md`](docs/API.md) | 前后端联调 | 16 个接口的字段级说明与示例 |
+| [`docs/DATA.md`](docs/DATA.md) | 想用自己的客户数据 | **换数据指南**：`--file`、字段别名表、映射置信度、能力降级、订单明细自动聚合 |
 | [`deploy/DOCKER.md`](deploy/DOCKER.md) | 交付 / 换机器 | 镜像结构、一键启动、离线部署包、11 条排障表 |
 | [`deploy/README.md`](deploy/README.md) | 本机运维 | Nginx 部署步骤、Linux systemd、缓存策略对照 |
 
@@ -420,7 +446,7 @@ A：分离后前端可独立部署与独立回滚，后端只提供 JSON API，�
 **Q：为什么客群聚类只有 4 类、轮廓系数只有 0.22？**
 A：k 由轮廓系数与肘部法共同确定。消费类数据本身特征高度相关（收入、消费、频次天然正相关），轮廓系数不会很高，0.2 左右是这类数据的正常范围——**如实说明比硬凑一个好看的数字更专业**。
 
-**Q：数据量 1867 行，结论可信吗？**
+**Q：数据量 2021 行，结论可信吗？**
 A：这是公开营销活动数据，用于**验证方法论与工程链路**。上生产需要：更大样本、时间窗滚动验证、A/B 实验校验 ROI。项目在自动结论里也标出了这些局限。
 
 **Q：只有 Docker、没有 Python 的电脑能跑吗？**
@@ -434,7 +460,7 @@ A：能。离线规则引擎覆盖 8 类意图，演示效果一致，只是不�
 ## 12. 已知限制与后续计划
 
 - 关联规则只做到 2 元项集，可扩展到 3 元 + FP-Growth 提速
-- 响应模型是线性模型，下一步可对比 LightGBM / 特征交叉；当前 AUC 0.856，提升空间主要在特征工程
+- 响应模型是线性模型，下一步可对比 LightGBM / 特征交叉；当前 AUC 0.8827，提升空间主要在特征工程
 - ROI 未计入物流、退货、毛利，属于"理想口径"，上线前需接真实成本
 - 尚未接入真实触达通道（短信/企微/邮件），可在 `campaign.py` 增加发送适配器
 - 缺少 A/B 实验与 ROI 回流闭环，这是从"分析工具"走向"营销系统"的关键一步

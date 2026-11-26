@@ -20,7 +20,8 @@ python scripts/export_openapi.py
 
 导入后可在 Apifox 里做调试、Mock、自动化测试，也可以直接分享给前端联调。
 
-> 下文所有示例值均来自仓库现有数据的真实响应（1867 位客户），可对照 `/docs` 自行复核。
+> 下文所有示例值均来自仓库现有数据的真实响应（2021 位客户），可对照 `/docs` 自行复核。
+> 换一份数据后字段可能降级（例如没有响应标签时 `/api/propensity` 返回 `available=false`），降级规则见 [`DATA.md`](DATA.md)。
 
 ---
 
@@ -32,7 +33,7 @@ python scripts/export_openapi.py
   "app": "Customer Insight Agent",
   "version": "1.0.0",
   "llm_enabled": false,
-  "customers": 1867,
+  "customers": 2021,
   "segments": 8,
   "clusters": 4,
   "rules": 20,
@@ -55,32 +56,105 @@ python scripts/export_openapi.py
 
 ```json
 {
+  "name": "iFood 客户画像",
   "source": "https://cdn.jsdelivr.net/gh/nailson/ifood-data-business-analyst-test@master/ifood_df.csv",
+  "source_page": "https://www.kaggle.com/datasets/imakash3011/customer-personality-analysis",
   "excel": "backend/data/raw/Customer_Personality_Analysis.xlsx",
-  "rows": 1867,
-  "columns": 26,
-  "fields": [{ "name": "income", "label": "年收入", "type": "number", "desc": "..." }],
+  "rows": 2021,
+  "columns": 25,
+  "raw_rows": 2205,
+  "raw_columns": 39,
   "missing_cells": 0,
-  "duplicate_rows": 0
+  "duplicate_rows": 184,
+  "fields": [{ "name": "income", "label": "收入", "type": "number", "desc": "..." }],
+  "categories": { "mnt_wines": "葡萄酒", "mnt_fruits": "水果" },
+  "channels": { "num_web": "线上商城", "num_catalog": "邮购目录", "num_store": "线下门店" },
+  "capabilities": {
+    "customers": 2021,
+    "has_income": true, "has_monetary": true, "has_recency": true,
+    "has_frequency": true, "has_response": true, "response_positive": 311,
+    "clustering": true, "rfm": true, "association": true, "propensity": true, "campaign": true
+  },
+  "contract": {
+    "grain": "customer",
+    "grain_label": "客户级宽表（一行一个客户）",
+    "reference_date": "2026-01-01",
+    "mapping": {
+      "rows": [
+        { "field": "income", "label": "收入", "source": "Income", "confidence": "高", "how": "直接映射" }
+      ],
+      "unused_columns": ["AcceptedCmp1", "Z_CostContact", "Z_Revenue"],
+      "warnings": []
+    }
+  },
+  "warnings": ["缺购买频次，按\"有消费记 1 次\"处理"]
 }
 ```
 
-> `rows` 是**清洗后**行数（原始 2205 行 → 去重 184 → 剔除收入缺失 154）。原始行数与处理过程见「数据说明」页。
+| 字段 | 说明 |
+| --- | --- |
+| `rows` / `columns` | **清洗后**客户宽表的行列数（原始 2205 行 → 去重 184 → 2021 行） |
+| `raw_rows` / `raw_columns` | 原始表行列数，用于说明「清洗掉多少」 |
+| `categories` / `channels` | 自动识别出的品类、渠道（换数据时会变） |
+| `capabilities` | 能力开关，前端据此隐藏算不出来的图 |
+| `contract.grain` | `customer`（客户级宽表）或 `transaction`（订单明细，按客户聚合） |
+| `contract.mapping.rows` | 每个标准字段来自哪一列 + 置信度（高/中/低） |
+| `contract.mapping.unused_columns` | 没被用上的列；如果关键列出现在这里，说明没识别上 |
+| `warnings` | 预处理过程中的降级提醒（缺收入、缺响应标签等） |
+
+> 想看更细的映射原因，读 `backend/data/processed/mapping.json`；换数据的完整说明见 [`DATA.md`](DATA.md)。
 
 ---
+
+## GET /api/capabilities
+
+只返回能力开关，前端首屏用它决定渲染哪些卡片。
+
+```json
+{
+  "customers": 2021,
+  "has_income": true,
+  "has_monetary": true,
+  "has_recency": true,
+  "has_frequency": true,
+  "has_response": true,
+  "response_positive": 311,
+  "categories": { "mnt_wines": "葡萄酒" },
+  "channels": { "num_web": "线上商城" },
+  "demographics": { "age": true, "gender": false, "education": true, "marital_status": true, "children": true, "income": true },
+  "clustering": true,
+  "rfm": true,
+  "association": true,
+  "propensity": true,
+  "campaign": true
+}
+```
+
+| 开关 | 什么时候是 `false` | 前端表现 |
+| --- | --- | --- |
+| `has_income` | 表里没有收入列 | 收入分布隐藏、人均收入显示 `—` |
+| `has_monetary` | 没有金额列（如 Mall / Bank） | 消费分布、品类结构、ROI 隐藏 |
+| `has_recency` | 没有「距上次购买天数」 | RFM 的 R 维度用 0 填充，分层仅供参考 |
+| `has_frequency` | 没有订单/频次列 | 用渠道次数之和兜底，再没有按「有消费记 1 次」 |
+| `has_response` | 没有响应标签（如 Mall） | **响应预测页整页换成说明卡**，方案用 0.1 基线概率 |
+| `association` | 品类少于 2 个 | 关联规则页空态 |
+| `demographics.gender` | 没有性别列 | 性别分布卡隐藏 |
+
+---
+
 
 ## GET /api/overview
 
 ```json
 {
   "kpis": {
-    "customers": 1867, "response_rate": 0.1548, "response_count": 289,
-    "avg_income": 51678.09, "avg_spend": 564.83, "avg_freq": 12.6,
-    "avg_recency": 49.04, "total_revenue": 1054533.0,
-    "dormant_rate": 0.2373, "dormant_count": 443,
-    "complain_rate": 0.0102, "discount_dependence": 0.1851
+    "customers": 2021, "response_rate": 0.1539, "response_count": 311,
+    "avg_income": 51640.59, "avg_spend": 563.79, "avg_freq": 12.6,
+    "avg_recency": 48.88, "total_revenue": 1139418.0,
+    "dormant_rate": 0.2355, "dormant_count": 476,
+    "complain_rate": 0.0094, "discount_dependence": 0.1854
   },
-  "age": [{ "name": "41-50", "value": 496, "ratio": 0.2656 }],
+  "age": [{ "name": "41-50", "value": 669, "ratio": 0.331 }],
   "education": [], "marital": [], "income": [],
   "category": [{ "name": "葡萄酒", "value": 296.4 }],
   "channel": [{ "name": "线上商城", "value": 3.9 }],
@@ -111,7 +185,7 @@ python scripts/export_openapi.py
 
 ```json
 {
-  "headline": "1867 位客户里，前 20% 贡献了 53.5% 的营收；按响应概率筛选后的头部名单，转化率是平均水平的 4.32 倍。",
+  "headline": "2021 位客户里，前 20% 贡献了 53.6% 的营收；按响应概率筛选后的头部名单，转化率是平均水平的 4.51 倍。",
   "counts": { "total": 10, "opportunity": 2, "risk": 4, "insight": 4, "filtered": 10 },
   "insights": [{
     "id": "value_concentration",
@@ -119,14 +193,14 @@ python scripts/export_openapi.py
     "severity": "insight",
     "severity_label": "结构洞察",
     "title": "重要价值客户是营收主力",
-    "conclusion": "664 位重要价值客户只占 35.6%，却贡献了 56.9% 的营收。",
+    "conclusion": "715 位重要价值客户只占 35.6%，却贡献了 56.9% 的营收。",
     "evidence": ["人均消费 902.6 元，是全量均值的 1.6 倍", "…"],
     "action": "对这群人做 VIP 维护，不要用大额折扣换短期成交。"
   }],
   "actions": [{ "priority": "P0", "action": "对 443 位超 75 天未购客户启动召回", "from": "沉默风险" }],
   "stats": {
-    "customers": 1867, "response_rate": 0.1548, "top20_revenue_share": 0.5347,
-    "auc": 0.8565, "head_lift": 4.32, "dormant_rate": 0.2373
+    "customers": 2021, "response_rate": 0.1539, "top20_revenue_share": 0.5357,
+    "auc": 0.8827, "head_lift": 4.32, "dormant_rate": 0.2373
   }
 }
 ```
@@ -154,14 +228,14 @@ python scripts/export_openapi.py
     "name": "重要价值客户", "priority": 1,
     "desc": "最近买过、买得又多又贵，是企业的现金牛。",
     "action": "VIP 专属权益 + 新品优先购；不要用大额折扣，重点维护关系。",
-    "count": 664, "ratio": 0.3557, "revenue": 599606.0, "revenue_ratio": 0.5686,
+    "count": 715, "ratio": 0.3557, "revenue": 599606.0, "revenue_ratio": 0.5686,
     "avg_r": 4.6, "avg_f": 4.3, "avg_m": 4.4,
     "avg_recency": 26.3, "avg_freq": 19.1, "avg_spend": 902.6,
     "avg_income": 61920.4, "avg_age": 50.9,
     "response_rate": 0.244, "complain_rate": 0.006
   }],
   "matrix": { "rows": ["F5", "..."], "cols": ["M1", "..."], "values": [[12]] },
-  "treemap": [{ "name": "重要价值客户", "value": 664, "revenue": 599606.0 }],
+  "treemap": [{ "name": "重要价值客户", "value": 715, "revenue": 599606.0 }],
   "score_distribution": { "R": { "1": 0.2 }, "F": {}, "M": {} }
 }
 ```
@@ -182,12 +256,12 @@ python scripts/export_openapi.py
 
 ```json
 {
-  "k": 4, "silhouette": 0.2167, "inertia": 6536.72,
+  "k": 4, "silhouette": 0.2163, "inertia": 6536.72,
   "features": ["income", "total_spend", "..."],
-  "clusters": [{ "cluster": 0, "name": "核心高价值客群", "size": 629 }],
+  "clusters": [{ "cluster": 0, "name": "核心高价值客群", "size": 687 }],
   "personas": [{
     "cluster": 0, "name": "核心高价值客群", "status": "活跃", "rank": 1,
-    "size": 629, "ratio": 0.3369, "revenue": 746686.0, "revenue_ratio": 0.7082,
+    "size": 687, "ratio": 0.3399, "revenue": 750886.0, "revenue_ratio": 0.7149,
     "headline": "高收入 · 高价值 · 高频复购",
     "tags": ["高收入", "高价值", "高频复购", "葡萄酒重度用户", "活动敏感型"],
     "summary": "…",
@@ -227,16 +301,19 @@ python scripts/export_openapi.py
 
 ```json
 {
-  "metrics": { "threshold": 0.59, "accuracy": 0.8503, "precision": 0.5126,
-               "recall": 0.7011, "f1": 0.5922,
-               "confusion": { "tp": 61, "fp": 58, "fn": 26, "tn": 416 },
-               "auc": 0.8565 },
-  "full_metrics": { "threshold": 0.59, "accuracy": 0.8495, "auc": 0.8701 },
-  "coefs": [{ "feature": "历史活动接受数", "key": "accepted_total", "coef": 0.836, "direction": "正向" }],
-  "lift": [{ "group": "第1组", "customers": 187, "avg_score": 0.9183,
-             "response_rate": 0.6684, "lift": 4.3183, "captured": 0.4325 }],
-  "base_rate": 0.1548,
-  "threshold": 0.59,
+  "available": true,
+  "metrics": { "threshold": 0.78, "accuracy": 0.8913, "precision": 0.6901,
+               "recall": 0.5269, "f1": 0.5976,
+               "confusion": { "tp": 49, "fp": 22, "fn": 44, "tn": 492 },
+               "auc": 0.8827 },
+  "full_metrics": { "threshold": 0.78, "accuracy": 0.8842, "precision": 0.6522,
+                    "recall": 0.5305, "f1": 0.5851, "auc": 0.8884 },
+  "coefs": [{ "feature": "历史活动接受数", "key": "accepted_total", "coef": 1.075, "direction": "正向" }],
+  "feature_labels": { "accepted_total": "历史活动接受数" },
+  "lift": [{ "group": "第1组", "customers": 203, "avg_score": 0.931,
+             "response_rate": 0.6946, "lift": 4.5137, "captured": 0.4534 }],
+  "base_rate": 0.1539,
+  "threshold": 0.78,
   "score_hist": [{ "name": "0.0-0.1", "value": 620 }],
   "top_customers": [{ "customer_id": "C00533", "cluster_name": "核心高价值客群",
                       "rfm_segment": "重要价值客户", "prob": 0.9979,
@@ -246,11 +323,25 @@ python scripts/export_openapi.py
 
 | 字段 | 说明 |
 | --- | --- |
-| `metrics` | 测试集（30%）指标；阈值由验证集 PR 曲线按 F1 最优选出 |
+| `available` | 这份数据能不能训练响应模型（没有响应标签 / 样本太少时为 `false`） |
+| `metrics` | 测试集（30%）指标；阈值在验证集上按 F1 最优自动搜索 |
 | `full_metrics` | 全量重训后的指标（用于对照是否过拟合） |
 | `coefs[].coef` | 标准化后的逻辑回归系数，绝对值越大影响越强 |
 | `lift[].lift` | 该分位响应率 ÷ 整体响应率 |
 | `lift[].captured` | 该分位捕获了多少比例的响应客户 |
+
+**没有响应标签时**（例如 Mall Customers 数据集）返回降级结构，HTTP 仍是 200：
+
+```json
+{
+  "available": false,
+  "reason": "数据里没有可用的响应标签（response / y / converted 等列），无法训练响应模型",
+  "table": [], "coefs": [], "lift": [], "top_customers": [], "score_hist": [],
+  "base_rate": 0.0, "threshold": 0.5
+}
+```
+
+前端据此把整页换成说明卡；营销方案在没有概率分时用 0.1 的基线概率圈人。
 
 > 兼容说明：早期字段名 `train_metrics` 仍保留，含义与 `metrics` 相同（测试集评估结果）。
 
@@ -284,7 +375,7 @@ python scripts/export_openapi.py
 
 ```json
 {
-  "total": 1867, "page": 1, "size": 20,
+  "total": 2021, "page": 1, "size": 20,
   "rows": [{
     "customer_id": "C00021", "age": 41.0, "age_group": "41-50",
     "education": "Graduation", "marital": "Married", "income": 58138.0,
@@ -308,8 +399,8 @@ python scripts/export_openapi.py
 
 ```json
 {
-  "clusters": [{ "name": "核心高价值客群", "size": 629, "headline": "高收入 · 高价值 · 高频复购" }],
-  "rfm": [{ "name": "重要价值客户", "size": 664 }]
+  "clusters": [{ "name": "核心高价值客群", "size": 687, "headline": "高收入 · 高价值 · 高频复购" }],
+  "rfm": [{ "name": "重要价值客户", "size": 715 }]
 }
 ```
 
@@ -335,16 +426,16 @@ python scripts/export_openapi.py
 
 ```json
 {
-  "ok": true, "segment": "核心高价值客群", "segment_size": 629,
-  "selected": 250, "coverage": 0.3975,
+  "ok": true, "segment": "核心高价值客群", "segment_size": 687,
+  "selected": 250, "coverage": 0.3639,
   "goal": "拉升客单价", "timing": "本周三 19:00-21:00 推送",
   "offer": "组合套装立减 10%", "channel": "线下门店",
   "channel_mix": [{ "name": "线下门店", "ratio": 0.4424 }],
   "products": [{ "name": "葡萄酒", "avg_spend": 758.78, "ratio": 0.4972 }],
   "upsell": [{ "from": "甜食", "to": "鱼类", "lift": 1.0919 }],
   "copy": "…", "budget": 2000, "cost_per_contact": 8, "cost": 2000,
-  "expected_responses": 200.08, "expected_conv_rate": 0.8003, "avg_order_value": 74.66,
-  "expected_revenue": 15386.34, "roi": 6.6932, "priority": "P0 立即执行",
+  "expected_responses": 209.16, "expected_conv_rate": 0.8366, "avg_order_value": 76.07,
+  "expected_revenue": 16387.83, "roi": 7.1939, "priority": "P0 立即执行",
   "audience_preview": [{ "customer_id": "C00533", "prob": 0.9979,
                          "total_spend": 1924.0, "purchase_freq": 19, "recency": 61 }],
   "kpi": {}

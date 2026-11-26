@@ -29,6 +29,7 @@
     "/api/dataset": {
       "get": {
         "summary": "Dataset Info",
+        "description": "数据集说明 + 数据能力清单。\n\n前端「数据说明」页用它来决定隐藏哪些图（比如这份数据没有收入列，\n就不显示收入分布，也不会显示\"暂无数据\"的空白图）。",
         "operationId": "dataset_info_api_dataset_get",
         "responses": {
           "200": {
@@ -39,6 +40,27 @@
                   "additionalProperties": true,
                   "type": "object",
                   "title": "Response Dataset Info Api Dataset Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/capabilities": {
+      "get": {
+        "summary": "Get Capabilities",
+        "description": "只取数据能力清单（前端启动时先问一次，决定页签显示）。",
+        "operationId": "get_capabilities_api_capabilities_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Get Capabilities Api Capabilities Get"
                 }
               }
             }

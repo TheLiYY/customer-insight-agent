@@ -38,7 +38,7 @@
 │                         │                                    │
 │                    insights.py  ← 把数字翻译成结论            │
 │                         │                                    │
-│  data/processed/customers.csv（1867 × 26，脚本生成）          │
+│  data/processed/customers.csv（2021 × 25，脚本生成）          │
 └──────────────────────────────────────────────────────────────┘
                             ▲
                             │ 生成
@@ -153,7 +153,7 @@ GET /api/personas
 
 **为什么 `store.cluster` 第一次会很慢、后面很快**：
 `Store` 里所有重计算都写成 `@property` + `if self._x is None` 的懒加载模式。
-1867 行数据全内存计算，首次约 2 秒，之后毫秒级。
+2021 行数据全内存计算，首次约 2 秒，之后毫秒级。
 未来数据涨到百万级，把这个类换成「离线跑批 + DuckDB/Parquet 查询」即可，**接口层一行都不用改**。
 
 ### 3.3 一次 Agent 对话
@@ -211,17 +211,64 @@ CLUSTER_FEATURES = ["income", "total_spend", "purchase_freq",
 `Settings` 用 `@dataclass` 而不是 pydantic，
 因为配置项少、想保持 `core/` 不依赖 Web 框架（`core/` 里不出现 FastAPI 是有意为之）。
 
-### 4.2 `core/dataset.py` — 读数据只有 20 行
+### 4.2 `core/schema.py` — 数据契约层（「换数据也能跑」的核心）
+
+这是全项目第二长的文件（约 770 行），但它只做一件事：**把任意一份客户表翻译成标准客户字段**。
+
+```python
+STANDARD_FIELDS = {
+    "income":  {"label": "收入",  "type": "number",
+                "aliases": ["income", "annualincome", "salary", "年收入", "工资", ...]},
+    "recency": {"label": "最近购买间隔", "type": "number",
+                "aliases": ["recency", "dayssincelastpurchase", "pdays", "未购买天数", ...]},
+    ...
+}
+
+def detect(df) -> dict:          # 列名 → 标准字段的映射（含置信度与理由）
+def build_customers(df, mapping, reference_date=None) -> tuple[DataFrame, dict]:
+def capabilities_of(df, mapping) -> dict:   # 这份数据能算什么
+```
+
+工作流程（三步）：
+
+1. **列名规范化 + 撞别名**：`normalize_name()` 去掉空格/下划线/括号并转小写，
+   然后 `_alias_score()` 打分（3 完全相同 / 2 前缀 / 1 包含 / 0 不匹配）。
+   长度 ≤2 的短别名（`id`、`y`、`age`）只允许完全匹配。
+2. **内容校验**：数值列要求可转换率 ≥80%；二值列接受 `y/yes/no/是/否/1/0`；
+   品类列要求均值 ≥1.0（排除 `Teenhome` 这种 0/1 标记）；渠道列要求均值 ≥0.5。
+3. **类型转换与聚合**：`build_customers()` 里处理 one-hot 反解、`Kidhome + Teenhome`
+   合并、订单明细按客户聚合、金额缺失时用消费评分代替、年龄分箱、收入 99 分位截尾。
+
+`capabilities_of()` 输出「能力开关」（有没有收入/金额/间隔/频次/响应标签），
+写进 `dataset_meta.json`，后端各模块和前端都靠它决定「降级还是渲染」。
+
+> 为什么不把识别逻辑写进 `prepare_data.py`？因为 `scripts/` 只该负责「流程编排」，
+> 「怎么认字段」是这个领域知识，放进 `core/` 才能被单测和别的脚本复用。
+
+### 4.3 `core/dataset.py` — 数据注册中心
+
+它是后端**唯一**读数据的地方，全部 `lru_cache`：
 
 ```python
 @lru_cache(maxsize=1)
-def load_customers() -> pd.DataFrame:
-    return pd.read_csv(CUSTOMERS_CSV)
+def load_customers(path=None) -> pd.DataFrame:      # 读 customers.csv，只对 BASE_NUMERIC 做数值化
+@lru_cache(maxsize=1)
+def load_meta() -> dict:                            # dataset_meta.json
+def categories() -> dict:  # {"mnt_wines": "葡萄酒", ...}，优先 meta，回退 config
+def channels() -> dict:    # {"num_web": "线上商城", ...}
+def capabilities() -> dict:                         # 能力开关；没有 meta 时现场推断
+def numeric_fields() -> list[str]:                  # 可参与聚类的数值列
+def clear_cache() -> None:                          # store.reload() 里调
 ```
 
-`lru_cache` 保证 CSV 只读一次。`store.reload()` 里调 `load_customers.cache_clear()` 来失效。
+**踩过的坑**：`load_customers()` 早期内部调 `numeric_fields()`，而 `numeric_fields()`
+又调 `load_customers()` → `RecursionError: maximum recursion depth exceeded`，所有接口 500。
+现在 `load_customers()` 只对固定的 `BASE_NUMERIC` 列表做 `pd.to_numeric`，不再回头问 `numeric_fields()`。
 
-### 4.3 `core/rfm.py` — RFM 三把尺子
+`categories()` / `channels()` 是**动态的**：iFood 数据是 6 品类 3 渠道，
+换成别的表可能就是 2 品类 1 渠道，所有模块遍历这两个函数，不再硬编码 `mnt_wines` 之类。
+
+### 4.4 `core/rfm.py` — RFM 三把尺子
 
 核心函数 `build_rfm(df)`：
 
@@ -235,7 +282,7 @@ def load_customers() -> pd.DataFrame:
 所以每个分数的样本量都是 20%，这是**分位打分的数学必然**，
 不代表业务上真的均匀分布——讲的时候要主动说明。
 
-### 4.4 `core/clustering.py` — sklearn KMeans
+### 4.5 `core/clustering.py` — sklearn KMeans
 
 见 `GLOSSARY.md` 第 2 节。代码要点：
 
@@ -252,14 +299,14 @@ sil = silhouette_score(scaled, labels, sample_size=min(n, 1500), random_state=se
 - 命名排序用 `score = 0.5*z(spend) + 0.3*z(freq) - 0.2*z(recency)`，
   这里的 0.5/0.3/0.2 是**业务权重假设**，不是数学推导结果，可以在答辩时说明。
 
-### 4.5 `core/persona.py` — 从数字到「人」
+### 4.6 `core/persona.py` — 从数字到「人」
 
 输入：`cluster_table`（每个客户带 cluster 编号）、`clusters`（簇统计）、原始 df。
 输出：每个客群一张卡：
 
 ```python
 {
-  "name": "核心高价值客群", "status": "活跃", "size": 629, "ratio": 0.337,
+  "name": "核心高价值客群", "status": "活跃", "size": 687, "ratio": 0.361,
   "headline": "高收入 · 高价值 · 高频复购",
   "tags": ["高收入", "高价值", "近期活跃", "葡萄酒重度用户", "线下门店为主"],
   "demographics": {...},   # 年龄/学历/婚姻/有孩比例
@@ -273,7 +320,7 @@ sil = silhouette_score(scaled, labels, sample_size=min(n, 1500), random_state=se
 `_tags()` 是一堆 `if 指标 > 分位:` 的规则，**没有模型，纯业务经验**——
 这类「规则 + 阈值」的标签在真实项目里比黑盒模型更受欢迎，因为运营能理解、能反驳、能改。
 
-### 4.6 `core/propensity.py` — 响应预测
+### 4.7 `core/propensity.py` — 响应预测
 
 ```python
 model = LogisticRegression(class_weight="balanced", C=1.0, max_iter=2000, random_state=seed)
@@ -287,7 +334,7 @@ pipe = Pipeline([("scaler", StandardScaler()), ("lr", model)])
 - 返回键保持稳定：`table / features / coefs / intercept / train_metrics / full_metrics / lift / base_rate / threshold`，
   前端和导出脚本都依赖这些键名，**改返回结构要同步改三处**（前端、export_report、tools）。
 
-### 4.7 `core/association.py` — Apriori
+### 4.8 `core/association.py` — Apriori
 
 ```python
 te = TransactionEncoder()
@@ -302,7 +349,7 @@ rules = association_rules(freq, metric="confidence", min_threshold=0.15)
 - **诚实说明**：本项目品类渗透率极高（都 90%+），lift 只在 1.05–1.10 之间，
   所以在自动结论里写的是「交叉销售要谨慎，建议组合套餐」而不是吹规则多强。
 
-### 4.8 `core/campaign.py` — 方案生成器
+### 4.9 `core/campaign.py` — 方案生成器
 
 `build_plan(df, scores, segment_field, segment, budget, cost_per_contact, discount, rules)`：
 
@@ -318,7 +365,7 @@ rules = association_rules(freq, metric="confidence", min_threshold=0.15)
 只要圈对人群，ROI 就好看。**这一点要主动说明**——
 真实业务里还要算物流、退货、毛利，ROI 会低不少，别把演示值当成承诺。
 
-### 4.9 `core/insights.py` — 自动结论（本次新增的核心能力）
+### 4.10 `core/insights.py` — 自动结论（本次新增的核心能力）
 
 这是「分析完自动出结论」的实现，也是最能体现"业务理解"的模块。
 
@@ -349,7 +396,7 @@ def build_insights(df, kpis, segments, personas, prop, rules, penetration) -> di
 参数是 `(category, severity, title, conclusion, evidence, action, priority)`。
 前端会自动渲染，不用改前端。
 
-### 4.10 `core/overview.py` — 总览页数据
+### 4.11 `core/overview.py` — 总览页数据
 
 `kpis()` 算 12 个核心指标；其余函数各负责一张图：
 `age_distribution` / `education_distribution` / `marital_distribution` /
@@ -359,7 +406,7 @@ def build_insights(df, kpis, segments, personas, prop, rules, penetration) -> di
 `correlation()` 用 `df[cols].corr()` 算皮尔逊相关矩阵，
 返回 `{x: 列名, y: 列名, values: 二维数组}` 给前端画热力图。
 
-### 4.11 `core/store.py` — 结果仓库
+### 4.12 `core/store.py` — 结果仓库
 
 **这是后端的"心脏"**。所有重计算都在这里懒加载、缓存：
 
@@ -382,7 +429,7 @@ def build_insights(df, kpis, segments, personas, prop, rules, penetration) -> di
 `_lock` 目前只用于 `reload()`，因为懒加载的计算是幂等的（重复算一次结果一样）。
 数据量大到需要严格单例计算时，把 `if self._x is None` 换成双检锁即可。
 
-### 4.12 `api/routes.py` — 14 个接口
+### 4.13 `api/routes.py` — 14 个接口
 
 全部是「取 store 的某个 property → 组装成 JSON」，几乎不含逻辑，所以很好读。
 唯一有业务的是 `GET /api/customers`（分页 + 筛选 + 排序）和
@@ -394,7 +441,7 @@ def build_insights(df, kpis, segments, personas, prop, rules, penetration) -> di
 - 百分比统一用 0–1 小数返回，前端 `pct()` 负责乘 100 加 `%`。
 - 金额统一用元（浮点），前端 `money()` 负责「1.2 万」这种可读格式。
 
-### 4.13 `agent/tools.py` — 工具箱
+### 4.14 `agent/tools.py` — 工具箱
 
 8 个工具，每个都是「取 store → 组装 blocks」：
 
@@ -411,7 +458,7 @@ def build_insights(df, kpis, segments, personas, prop, rules, penetration) -> di
 
 **为什么工具返回 blocks 而不是字符串**：见 3.3 节。
 
-### 4.14 `agent/orchestrator.py` — 大脑
+### 4.15 `agent/orchestrator.py` — 大脑
 
 ```python
 def chat(message, history):
@@ -434,7 +481,7 @@ def chat(message, history):
 **双模式的意义**：没有 API Key 也能完整演示；
 有 Key 时对话更自然。答辩现场网络不稳也不会翻车。
 
-### 4.15 `frontend/src/lib/api.js` — 所有请求的唯一出口
+### 4.16 `frontend/src/lib/api.js` — 所有请求的唯一出口
 
 ```js
 const BASE = import.meta.env.VITE_API_BASE || '/api'
@@ -444,7 +491,7 @@ const BASE = import.meta.env.VITE_API_BASE || '/api'
 - 生产部署到不同域名时，构建时设 `VITE_API_BASE=https://api.example.com/api`。
 - 所有错误统一抛 `Error(detail)`，页面用 `ErrorBox` 统一展示。
 
-### 4.16 `frontend/src/components/Chart.jsx` — ECharts 封装
+### 4.17 `frontend/src/components/Chart.jsx` — ECharts 封装
 
 ```js
 const chart = echarts.init(ref.current)
@@ -456,7 +503,7 @@ return () => { ro.disconnect(); chart.dispose() }
 1. `ResizeObserver`：侧边栏收起/窗口缩放时图表跟着变，不会糊。
 2. `dispose()`：组件卸载时销毁实例，避免内存泄漏（切换页面时尤其明显）。
 
-### 4.17 `frontend/src/pages/Insights.jsx` — 自动结论页（新增）
+### 4.18 `frontend/src/pages/Insights.jsx` — 自动结论页（新增）
 
 纯展示：KPI 行 + 一句话结论 + 按严重程度过滤 + 每条结论一张卡（标签/标题/结论/证据/建议）+ 行动清单表。
 
@@ -468,23 +515,29 @@ return () => { ro.disconnect(); chart.dispose() }
 ## 5. 数据从哪来、到哪去
 
 ```
-Kaggle 原始数据集（2205 行 × 39 列）
-   │  ① scripts/prepare_data.py::download()  多镜像下载，失败回退内置样本
+你的原始表（任意列名；内置 iFood 是 2205 行 × 39 列）
+   │  ① scripts/prepare_data.py 读入：download() 多镜像下载 / --file 本地 csv·xlsx / --dataset 内置三套
    ▼
-backend/data/raw/ifood_df.csv
-   │  ② build()：去重 184 条 → 反解 one-hot → 收入 99 分位截尾 → 剔除缺失 154 条
+backend/data/raw/source_raw.csv（原始副本，可复现）
+   │  ② core/schema.py::detect()   列名规范化 → 撞别名 → 内容校验 → mapping（哪个标准字段来自哪列）
+   │      core/schema.py::build_customers()  类型转换 → one-hot 反解 → 订单明细聚合 → 分箱/截尾
    ▼
-backend/data/processed/customers.csv（1867 行 × 26 列）
+backend/data/processed/customers.csv（2021 行 × 25 列，标准字段）
    │  ③ 同时生成
-   ├─→ backend/data/raw/Customer_Personality_Analysis.xlsx  （给业务看的原始 Excel：客户明细/字段字典/数据来源）
-   └─→ backend/data/processed/dataset_meta.json            （字段中英文名，前端「数据说明」页用）
+   ├─→ backend/data/processed/mapping.json              （字段映射 + 置信度 + 未使用列，排查「为什么没认出来」）
+   ├─→ backend/data/processed/dataset_meta.json         （字段字典 + capabilities 能力开关 + warnings）
+   └─→ backend/data/raw/Customer_Personality_Analysis.xlsx（给业务看的 Excel：客户明细/字段字典/数据来源）
    │  ④ 后端启动后
    ▼
-store 里各模块计算结果
+store 里各模块计算结果（各模块都读 dataset.categories()/channels()/capabilities()，不硬编码字段）
    │  ⑤ scripts/export_report.py
    ▼
 backend/data/processed/Customer_Insight_Report.xlsx  （9 个 sheet + 4 张原生图表）
 ```
+
+**这条链路的关键变化**：以前第 ② 步是 39 列硬编码映射（换数据必炸），
+现在是 `schema.py` 自动识别 + `capabilities` 能力声明（换数据自动降级）。
+三套数据（iFood / Mall / Bank）跑的都是同一条链路，只有第 ① 步的输入不同。
 
 **为什么保留两份 Excel**：
 
@@ -497,7 +550,8 @@ backend/data/processed/Customer_Insight_Report.xlsx  （9 个 sheet + 4 张原�
 
 | 想做什么 | 改哪里 | 注意 |
 | --- | --- | --- |
-| 换数据集 | `scripts/prepare_data.py` 的 `download()` / `load_from_excel()` / `build()`，同时改 `FIELD_DICT` | 新数据要有 `response` 标签才能跑响应预测；本地表格直接 `--xlsx 文件.xlsx` |
+| 换数据集 | 什么都不用改：`python scripts/prepare_data.py --file 你的表.xlsx` | 列名认不出来就去 `core/schema.py` 的 `STANDARD_FIELDS` 里补别名；要跑响应预测得有 `response`/`y` 这类标签列。详见 [`DATA.md`](DATA.md) |
+| 支持新平台/新导出格式 | `scripts/prepare_data.py` 的 `PRESETS` 加一条 | 填 name/desc/urls/sep 即可 |
 | 改客群数量 | `config.py` 的 `Settings.cluster_k` | 名字池只有 6 个，k>6 会自动补编号 |
 | 加画像标签 | `persona.py::_tags()` | 用分位数做阈值，别写死绝对值 |
 | 加自动结论 | `insights.py::build_insights()` 里加一个 `add(...)` | 前端自动渲染，无需改前端 |
@@ -541,7 +595,7 @@ python scripts/export_report.py
 1. **`core/` 不 import FastAPI**：让核心算法可以脱离 Web 单独跑（脚本、Notebook、定时任务都能复用）。
 2. **算法用 sklearn / mlxtend，不手写**：可维护、有文档、能解释，是工程实践的正确选择。
 3. **不做前端状态管理库**：8 个页面、每个页面一次 fetch，`useState` 足够；引入 Redux 只会增加理解成本。
-4. **不做数据库**：1867 行 CSV 读取耗时 <100ms，上数据库反而增加部署复杂度。数据涨到十万级时换 DuckDB 即可。
+4. **不做数据库**：2021 行 CSV 读取耗时 <100ms，上数据库反而增加部署复杂度。数据涨到十万级时换 DuckDB 即可。
 5. **Agent 双模式 + 规则兜底**：演示稳定性的优先级高于"看起来高级"。
 6. **自动结论文案写死在代码里**：保证每条结论可追溯到数字，不会出现"大模型编了个不存在的 30%"。
 7. **部署只保留 Nginx 一种前端方式**：静态托管 + `/api` 反代同源，省掉 CORS 与跨域调试；本机与容器只是换一份 conf。
