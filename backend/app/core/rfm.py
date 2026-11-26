@@ -6,8 +6,8 @@ from __future__ import annotations
 
 import pandas as pd
 
-from .config import CATEGORY_FIELDS
-from .utils import clean, pct, quantile_score
+from .dataset import categories as categories_of
+from .utils import clean, mean_of, pct, quantile_score
 
 # 8 个 RFM 客群：key = (R是否高, F是否高, M是否高)
 SEGMENTS: dict[str, dict] = {
@@ -109,10 +109,10 @@ def segment_summary(rfm: pd.DataFrame) -> list[dict]:
                 "avg_recency": clean(sub["recency"].mean()),
                 "avg_freq": clean(sub["purchase_freq"].mean()),
                 "avg_spend": clean(sub["total_spend"].mean()),
-                "avg_income": clean(sub["income"].mean()),
-                "avg_age": clean(sub["age"].mean()),
-                "response_rate": clean(sub["response"].mean()),
-                "complain_rate": clean(sub["complain"].mean()),
+                "avg_income": clean(mean_of(sub, "income")),
+                "avg_age": clean(mean_of(sub, "age")),
+                "response_rate": clean(mean_of(sub, "response")),
+                "complain_rate": clean(mean_of(sub, "complain")),
             }
         )
     rows.sort(key=lambda x: x["priority"])
@@ -138,13 +138,15 @@ def segment_treemap(rfm: pd.DataFrame) -> list[dict]:
 
 
 def top_segment_categories(rfm: pd.DataFrame, segment: str, limit: int = 3) -> list[dict]:
-    """给定客群的品类偏好（按人均消费额排序）。"""
+    """给定客群的品类偏好（按人均消费额排序）。品类随数据变化，没有品类字段就返回空。"""
     sub = rfm[rfm["rfm_segment"] == segment]
     if sub.empty:
         return []
     items = []
-    for field, label in CATEGORY_FIELDS.items():
-        items.append({"name": label, "value": clean(sub[field].mean())})
+    for field, label in categories_of().items():
+        items.append({"name": label, "value": clean(mean_of(sub, field))})
+    if not items:
+        return []
     items.sort(key=lambda x: -(x["value"] or 0))
     total = sum(v["value"] or 0 for v in items) or 1
     for it in items:

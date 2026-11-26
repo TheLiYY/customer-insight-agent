@@ -70,3 +70,34 @@ def money(value: float) -> float:
 
 def clamp(value: float, low: float, high: float) -> float:
     return max(low, min(high, value))
+
+
+def num(df: pd.DataFrame, col: str) -> pd.Series:
+    """取数值列；列不存在时返回等长的 0 序列。
+
+    换数据时很多字段可能没有（比如银行名单没有消费额），
+    各分析模块统一用这个函数取值，缺字段就退化成 0，不抛 KeyError。
+    """
+    if col not in df.columns:
+        return pd.Series(0.0, index=df.index, dtype="float64")
+    return pd.to_numeric(df[col], errors="coerce").fillna(0.0).astype("float64")
+
+
+def mean_of(df: pd.DataFrame, col: str) -> float:
+    if col not in df.columns or len(df) == 0:
+        return 0.0
+    value = float(num(df, col).mean())
+    return 0.0 if math.isnan(value) else value
+
+
+def sum_of(df: pd.DataFrame, col: str) -> float:
+    if col not in df.columns or len(df) == 0:
+        return 0.0
+    value = float(num(df, col).sum())
+    return 0.0 if math.isnan(value) else value
+
+
+def has_value(df: pd.DataFrame, col: str) -> bool:
+    """字段存在且有正值（全 0 的列等于没有）。"""
+    return col in df.columns and float(num(df, col).abs().sum()) > 0
+

@@ -1,0 +1,121 @@
+{
+  "grain": "customer",
+  "mapping": {
+    "age": {
+      "source": "Age",
+      "score": 3,
+      "confidence": "高"
+    },
+    "income": {
+      "source": "Income",
+      "score": 3,
+      "confidence": "高"
+    },
+    "recency": {
+      "source": "Recency",
+      "score": 3,
+      "confidence": "高"
+    },
+    "total_spend": {
+      "source": "MntTotal",
+      "score": 3,
+      "confidence": "高"
+    },
+    "tenure_days": {
+      "source": "Customer_Days",
+      "score": 3,
+      "confidence": "高"
+    },
+    "num_deals": {
+      "source": "NumDealsPurchases",
+      "score": 2,
+      "confidence": "中"
+    },
+    "web_visits_month": {
+      "source": "NumWebVisitsMonth",
+      "score": 3,
+      "confidence": "高"
+    },
+    "accepted_total": {
+      "source": "AcceptedCmpOverall",
+      "score": 3,
+      "confidence": "高"
+    },
+    "response": {
+      "source": "Response",
+      "score": 3,
+      "confidence": "高"
+    },
+    "complain": {
+      "source": "Complain",
+      "score": 3,
+      "confidence": "高"
+    },
+    "children": {
+      "source": "Kidhome + Teenhome",
+      "score": 3,
+      "confidence": "高",
+      "how": "家庭子女数（儿童 + 青少年合并）"
+    }
+  },
+  "transaction": {},
+  "categories": {
+    "mnt_wines": {
+      "source": "MntWines",
+      "label": "葡萄酒",
+      "why": "列名含「wine」"
+    },
+    "mnt_fruits": {
+      "source": "MntFruits",
+      "label": "水果",
+      "why": "列名含「fruit」"
+    },
+    "mnt_meat": {
+      "source": "MntMeatProducts",
+      "label": "肉类",
+      "why": "列名含「meat」"
+    },
+    "mnt_fish": {
+      "source": "MntFishProducts",
+      "label": "鱼类",
+      "why": "列名含「fish」"
+    },
+    "mnt_sweet": {
+      "source": "MntSweetProducts",
+      "label": "甜食",
+      "why": "列名含「sweet」"
+    },
+    "mnt_gold": {
+      "source": "MntGoldProds",
+      "label": "金饰礼品",
+      "why": "列名含「gold」"
+    }
+  },
+  "channels": {
+    "num_web": {
+      "source": "NumWebPurchases",
+      "label": "线上商城",
+      "why": "列名含「web」"
+    },
+    "num_catalog": {
+      "source": "NumCatalogPurchases",
+      "label": "邮购目录",
+      "why": "列名含「catalog」"
+    },
+    "num_store": {
+      "source": "NumStorePurchases",
+      "label": "线下门店",
+      "why": "列名含「store」"
+    }
+  },
+  "unused_columns": [
+    "AcceptedCmp3",
+    "AcceptedCmp4",
+    "AcceptedCmp5",
+    "AcceptedCmp1",
+    "AcceptedCmp2",
+    "Z_CostContact",
+    "Z_Revenue",
+    "MntRegularProds"
+  ]
+}

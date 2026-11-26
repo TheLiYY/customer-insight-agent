@@ -13,8 +13,10 @@ from typing import Any
 
 import pandas as pd
 
-from .config import CATEGORY_FIELDS, CHANNEL_FIELDS, zh_education, zh_marital
-from .utils import clean
+from .config import zh_education, zh_marital
+from .dataset import channels as channels_of
+from .dataset import categories as categories_of
+from .utils import clean, mean_of, sum_of
 
 SEVERITY_LABELS = {
     "opportunity": "增长机会",
@@ -44,7 +46,10 @@ def _top20_share(df: pd.DataFrame) -> float:
 
 
 def _main_group(df: pd.DataFrame, field: str, labeler=None, order=None) -> tuple[str, float]:
-    counts = df[field].value_counts()
+    if field not in df.columns:
+        return "", 0.0
+    counts = df[field].astype(str).str.strip()
+    counts = counts[counts.str.len() > 0].value_counts()
     if counts.empty:
         return "未知", 0.0
     name = str(counts.index[0])
@@ -96,7 +101,7 @@ def build_insights(
     # ---------- 1. 价值集中度 ----------
     top20 = _top20_share(df)
     top_seg = max(segments, key=lambda s: s.get("revenue") or 0) if segments else None
-    if top_seg:
+    if top_seg and total_revenue > 0:
         add(
             "价值结构",
             "insight",
@@ -170,6 +175,20 @@ def build_insights(
             "把营销名单按响应概率排序，先投 Top 20%，剩余预算再往下延展。",
             priority=1,
         )
+    else:
+        add(
+            "精准触达",
+            "risk",
+            "这份数据暂时做不了响应预测",
+            (prop.get("reason") or "缺少「是否响应」字段或有效样本不足。")
+            + " 没有响应标签就没法训练转化概率模型，精准名单只能退化成规则圈人。",
+            [
+                "需要一列「是否响应/是否转化」的历史结果（0/1 或 是/否），至少 60 位客户",
+                f"当前数据可用字段：{'、'.join(list(df.columns)[:12])}……",
+            ],
+            "补一列历史活动的响应结果后重跑 prepare_data.py，即可恢复响应预测与 Lift 分析。",
+            priority=1,
+        )
 
     # ---------- 4. 品类结构 ----------
     if penetration:
@@ -182,7 +201,7 @@ def build_insights(
             ev.append(
                 f"{second[0]['name']}：渗透率 {_pct(second[0]['penetration'])}，营收占比 {_pct(second[0].get('revenue_ratio') or 0)}"
             )
-        labels = "、".join(CATEGORY_FIELDS.values())
+        labels = "、".join(categories_of().values())
         add(
             "品类结构",
             "insight",
@@ -190,7 +209,7 @@ def build_insights(
             (
                 f"{top_cat['name']}是绝对主品类，人均消费 {_money(top_cat['avg_spend'])}，"
                 f"{_pct(top_cat['penetration'])} 的客户买过；"
-                f"六个品类（{labels}）营收结构见证据。"
+                f"全部品类（{labels}）营收结构见证据。"
             ),
             ev,
             f"以{top_cat['name']}做引流款，用「主品类 + 高毛利小品类」的组合套餐拉高客单价。",
@@ -232,46 +251,59 @@ def build_insights(
             )
 
     # ---------- 6. 渠道结构 ----------
-    channel = {CHANNEL_FIELDS[f]: float(df[f].sum()) for f in CHANNEL_FIELDS}
-    ch_total = sum(channel.values()) or 1.0
-    ch_sorted = sorted(channel.items(), key=lambda kv: -kv[1])
-    ch_name, ch_value = ch_sorted[0]
-    add(
-        "渠道结构",
-        "insight",
-        f"{ch_name}是主要成交渠道（{_pct(ch_value / ch_total)}）",
-        (
-            "从购买次数看，"
-            + "，".join(f"{name} {_pct(value / ch_total)}" for name, value in ch_sorted)
-            + f"；渠道结构决定了触达方式的选择。"
-        ),
-        [f"{name}：{value:,.0f} 次购买，占比 {_pct(value / ch_total)}" for name, value in ch_sorted],
-        f"预算优先投{ch_name}，同时用线上触达做低频客户的低成本唤醒。",
-        priority=2,
-    )
+    chans = channels_of()
+    channel = {label: sum_of(df, field) for field, label in chans.items()}
+    ch_total = sum(channel.values()) or 0.0
+    if channel and ch_total > 0:
+        ch_sorted = sorted(channel.items(), key=lambda kv: -kv[1])
+        ch_name, ch_value = ch_sorted[0]
+        add(
+            "渠道结构",
+            "insight",
+            f"{ch_name}是主要成交渠道（{_pct(ch_value / ch_total)}）",
+            (
+                "从购买次数看，"
+                + "，".join(f"{name} {_pct(value / ch_total)}" for name, value in ch_sorted)
+                + "；渠道结构决定了触达方式的选择。"
+            ),
+            [f"{name}：{value:,.0f} 次购买，占比 {_pct(value / ch_total)}" for name, value in ch_sorted],
+            f"预算优先投{ch_name}，同时用线上触达做低频客户的低成本唤醒。",
+            priority=2,
+        )
 
     # ---------- 7. 人群结构 ----------
     edu_name, edu_ratio = _main_group(df, "education", zh_education)
     mar_name, mar_ratio = _main_group(df, "marital_status", zh_marital)
     age_name, age_ratio = _main_group(df, "age_group")
-    avg_age = float(df["age"].mean()) if "age" in df.columns else 0.0
-    add(
-        "人群结构",
-        "insight",
-        f"{mar_name}+{edu_name} 是主力人群",
-        (
-            f"{mar_name}客户占 {_pct(mar_ratio)}，{edu_name}学历占 {_pct(edu_ratio)}，"
-            f"年龄以 {age_name} 为主（{_pct(age_ratio)}）；"
-            f"整体平均年龄 {avg_age:.0f} 岁，平均家庭年收入 {_money(float(kpis.get('avg_income') or 0))}。"
-        ),
-        [
-            f"{mar_name}：{_pct(mar_ratio)}",
-            f"{edu_name}：{_pct(edu_ratio)}",
-            f"{age_name}：{_pct(age_ratio)} 的人集中在这一段",
-        ],
-        "素材与权益设计按主力人群的偏好来定：家庭消费场景 + 品质导向。",
-        priority=3,
-    )
+    avg_age = mean_of(df, "age")
+    demo_parts = []
+    demo_evidence = []
+    if mar_ratio:
+        demo_parts.append(f"{mar_name}客户占 {_pct(mar_ratio)}")
+        demo_evidence.append(f"{mar_name}：{_pct(mar_ratio)}")
+    if edu_ratio:
+        demo_parts.append(f"{edu_name}学历占 {_pct(edu_ratio)}")
+        demo_evidence.append(f"{edu_name}：{_pct(edu_ratio)}")
+    if age_ratio:
+        demo_parts.append(f"年龄以 {age_name} 为主（{_pct(age_ratio)}）")
+        demo_evidence.append(f"{age_name}：{_pct(age_ratio)} 的人集中在这一段")
+    if avg_age:
+        demo_parts.append(f"整体平均年龄 {avg_age:.0f} 岁")
+    if kpis.get("avg_income"):
+        demo_parts.append(f"平均家庭年收入 {_money(float(kpis.get('avg_income') or 0))}")
+    if demo_parts:
+        title = (
+            f"{mar_name}+{edu_name} 是主力人群" if (mar_ratio and edu_ratio) else "人群结构特征"
+        )
+        add(
+            "人群结构",
+            "insight",
+            title,
+            "，".join(demo_parts) + "。",
+            demo_evidence,
+            "素材与权益设计按主力人群的偏好来定：家庭消费场景 + 品质导向。",
+            priority=3,
+        )
 
     # ---------- 8. 折扣依赖与投诉 ----------
     discount = float(kpis.get("discount_dependence") or 0)
@@ -323,11 +355,19 @@ def build_insights(
 
     # ---------- 汇总 ----------
     actions.sort(key=lambda a: a["priority"])
-    headline = (
-        f"{customers} 位客户里，前 20% 贡献了 {_pct(top20)} 的营收；"
-        f"按响应概率筛选后的头部名单，转化率是平均水平的 "
-        f"{float(lift[0]['lift']) if lift else 1.0:.2f} 倍。"
-    )
+    has_revenue = bool(total_revenue and total_revenue > 0)
+    parts: list[str] = []
+    if has_revenue:
+        parts.append(f"{customers} 位客户里，前 20% 贡献了 {_pct(top20)} 的营收")
+    elif base_rate:
+        parts.append(f"{customers} 位客户整体响应率 {_pct(base_rate)}")
+    else:
+        parts.append(f"这份数据共 {customers} 位客户")
+    if lift:
+        parts.append(f"按响应概率筛选后的头部名单，转化率是平均水平的 {float(lift[0]['lift']):.2f} 倍")
+    else:
+        parts.append("这份数据没有响应标签，暂时用 RFM 分层 + 客群画像来做精准圈人")
+    headline = "；".join(parts) + "。"
 
     return {
         "headline": headline,

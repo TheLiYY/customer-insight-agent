@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from ..core.config import CATEGORY_FIELDS
+from ..core.dataset import categories as categories_of
 from ..core.store import store
 from ..core.utils import clean
 
@@ -76,26 +76,28 @@ def line_option(categories: list[str], values: list[float], name: str = "数值"
 def overview_report(args: dict) -> list[dict]:
     data = store.overview
     k = data["kpis"]
-    blocks = [
-        kpi(
-            [
-                {"label": "客户总数", "value": k["customers"], "suffix": "人"},
-                {"label": "活动响应率", "value": round(k["response_rate"] * 100, 1), "suffix": "%"},
-                {"label": "人均消费", "value": k["avg_spend"], "suffix": "元"},
-                {"label": "人均购买频次", "value": k["avg_freq"], "suffix": "次"},
-                {"label": "沉睡客户占比", "value": round(k["dormant_rate"] * 100, 1), "suffix": "%"},
-            ]
-        ),
-        chart("年龄段分布", pie_option(data["age"])),
-        chart("各品类消费总额（元）", bar_option([d["name"] for d in data["category"]], [d["value"] for d in data["category"]], "消费额")),
-        chart("不同年龄段的响应率", bar_option([d["name"] for d in data["response_by_age"]], [round((d["value"] or 0) * 100, 1) for d in data["response_by_age"]], "响应率%")),
-    ]
+    items = [{"label": "客户总数", "value": k["customers"], "suffix": "人"}]
+    if k.get("response_rate") is not None:
+        items.append({"label": "活动响应率", "value": round(k["response_rate"] * 100, 1), "suffix": "%"})
+    items.append({"label": "人均消费", "value": k["avg_spend"], "suffix": "元"})
+    items.append({"label": "人均购买频次", "value": k["avg_freq"], "suffix": "次"})
+    if k.get("dormant_rate") is not None:
+        items.append({"label": "沉睡客户占比", "value": round(k["dormant_rate"] * 100, 1), "suffix": "%"})
+    blocks = [kpi(items)]
+    if data["age"]:
+        blocks.append(chart("年龄段分布", pie_option(data["age"])))
+    if data["category"]:
+        blocks.append(chart("各品类消费总额（元）", bar_option([d["name"] for d in data["category"]], [d["value"] for d in data["category"]], "消费额")))
+    if data["response_by_age"]:
+        blocks.append(chart("不同年龄段的响应率", bar_option([d["name"] for d in data["response_by_age"]], [round((d["value"] or 0) * 100, 1) for d in data["response_by_age"]], "响应率%")))
     top_age = data["response_by_age"][0] if data["response_by_age"] else None
     concl = (
-        f"样本共 {k['customers']} 位客户，最近一次营销活动的响应率为 {k['response_rate'] * 100:.1f}%，"
-        f"人均消费 {k['avg_spend']:.0f} 元、人均下单 {k['avg_freq']:.1f} 次。"
-        f"有 {k['dormant_count']} 位客户（{k['dormant_rate'] * 100:.1f}%）超过 75 天没有购买，属于需要优先唤醒的人群。"
+        f"样本共 {k['customers']} 位客户，"
+        + (f"最近一次营销活动的响应率为 {k['response_rate'] * 100:.1f}%，" if k.get("response_rate") is not None else "这份数据没有营销响应标签，")
+        + f"人均消费 {k['avg_spend']:.0f} 元、人均下单 {k['avg_freq']:.1f} 次。"
     )
+    if k.get("dormant_count") is not None:
+        concl += f"有 {k['dormant_count']} 位客户（{k['dormant_rate'] * 100:.1f}%）超过 75 天没有购买，属于需要优先唤醒的人群。"
     if top_age:
         concl += f" 响应率最高的是{top_age['name']}客群（{top_age['value'] * 100:.1f}%），说明该年龄段对活动更敏感。"
     blocks.append(text(concl))
@@ -170,6 +172,11 @@ def persona_report(args: dict) -> list[dict]:
 
 def propensity_report(args: dict) -> list[dict]:
     prop = store.propensity
+    if not prop.get("available", True):
+        return [
+            text(prop.get("reason") or "这份数据暂时不支持响应预测。"),
+            text("响应预测需要「是否响应过活动」这样的标签列。补充后重新跑 prepare_data.py 即可启用。"),
+        ]
     metrics = prop["train_metrics"]
     top = (
         store.enriched.sort_values("prob", ascending=False)
@@ -184,7 +191,7 @@ def propensity_report(args: dict) -> list[dict]:
                 {"label": "准确率", "value": round((metrics.get("accuracy") or 0) * 100, 1), "suffix": "%"},
                 {"label": "精准率", "value": round((metrics.get("precision") or 0) * 100, 1), "suffix": "%"},
                 {"label": "召回率", "value": round((metrics.get("recall") or 0) * 100, 1), "suffix": "%"},
-                {"label": "大盘响应率", "value": round(prop["base_rate"] * 100, 1), "suffix": "%"},
+                {"label": "大盘响应率", "value": round((prop.get("base_rate") or 0) * 100, 1), "suffix": "%"},
             ]
         ),
         text(
@@ -298,17 +305,15 @@ def category_report(args: dict) -> list[dict]:
 def customer_profile(args: dict) -> list[dict]:
     cid = str(args.get("customer_id", "")).strip()
     table_df = store.enriched
-    hit = table_df[table_df["customer_id"] == cid] if cid else table_df.head(0)
+    ids = table_df["customer_id"].astype(str)
+    hit = table_df.loc[ids == cid] if cid else table_df.head(0)
     if hit.empty:
-        sample = table_df.iloc[0]["customer_id"]
-        return [text(f"没找到客户「{cid}」。可以试试 {sample} 这样的编号。")]
+        samples = "、".join(ids.head(3).tolist())
+        prefix = f"没找到客户「{cid}」。" if cid else "记得带上客户编号，"
+        return [text(f"{prefix}可以试试 {samples} 这样的编号。")]
     row = hit.iloc[0]
-    cats = [{"name": label, "value": clean(row[field])} for field, label in CATEGORY_FIELDS.items()]
-    radar = {
-        "tooltip": {},
-        "radar": {"indicator": [{"name": c["name"], "max": max(c["value"] or 0 for c in cats) * 1.2} for c in cats]},
-        "series": [{"type": "radar", "data": [{"name": "消费额", "value": [c["value"] or 0 for c in cats]}]}],
-    }
+    cat_fields = [(f, label) for f, label in categories_of().items() if f in hit.columns]
+    cats = [{"name": label, "value": clean(row[f])} for f, label in cat_fields]
     blocks = [
         kpi(
             [
@@ -320,21 +325,32 @@ def customer_profile(args: dict) -> list[dict]:
         ),
         kpi(
             [
-                {"label": "年龄", "value": clean(row["age"]), "suffix": "岁"},
-                {"label": "年收入", "value": clean(row["income"]), "suffix": "元"},
-                {"label": "累计消费", "value": clean(row["total_spend"]), "suffix": "元"},
-                {"label": "购买频次", "value": clean(row["purchase_freq"]), "suffix": "次"},
-                {"label": "最近购买", "value": clean(row["recency"]), "suffix": "天前"},
+                {"label": "年龄", "value": clean(row.get("age")), "suffix": "岁"},
+                {"label": "年收入", "value": clean(row.get("income")), "suffix": "元"},
+                {"label": "累计消费", "value": clean(row.get("total_spend")), "suffix": "元"},
+                {"label": "购买频次", "value": clean(row.get("purchase_freq")), "suffix": "次"},
+                {"label": "最近购买", "value": clean(row.get("recency")), "suffix": "天前"},
             ]
         ),
-        chart("品类消费结构（元）", radar),
-        text(
-            f"这位客户是 {row['age']:.0f} 岁的{row['education']}学历、{row['marital_status']}客户，"
-            f"家庭年收入 {row['income']:,.0f} 元，累计消费 {row['total_spend']:,.0f} 元，"
-            f"最近一次购买在 {row['recency']:.0f} 天前。属于「{row['cluster_name']}」/「{row['rfm_segment']}」，"
-            f"预测下次活动响应概率 {float(row['prob']) * 100:.1f}%。"
-        ),
     ]
+    if len(cats) >= 3:
+        top = max(c["value"] or 0 for c in cats) or 1
+        radar = {
+            "tooltip": {},
+            "radar": {"indicator": [{"name": c["name"], "max": round(top * 1.2, 2)} for c in cats]},
+            "series": [
+                {"type": "radar", "data": [{"name": "消费额", "value": [c["value"] or 0 for c in cats]}]}
+            ],
+        }
+        blocks.append(chart("品类消费结构（元）", radar))
+    detail = (
+        f"这位客户累计消费 {float(row.get('total_spend') or 0):,.0f} 元，"
+        f"购买 {float(row.get('purchase_freq') or 0):.0f} 次，"
+        f"最近一次购买在 {float(row.get('recency') or 0):.0f} 天前，"
+        f"属于「{row['cluster_name']}」/「{row['rfm_segment']}」，"
+        f"预测下次活动响应概率 {float(row['prob']) * 100:.1f}%。"
+    )
+    blocks.append(text(detail))
     return blocks
 
 

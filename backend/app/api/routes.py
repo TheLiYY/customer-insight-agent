@@ -6,7 +6,9 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from ..core.config import CATEGORY_FIELDS, settings
+from ..core.config import settings
+from ..core.dataset import capabilities, categories as categories_of, channels as channels_of
+from ..core.dataset import contract, warnings
 from ..core.store import store
 from ..core.utils import clean
 
@@ -27,16 +29,37 @@ def health() -> dict[str, Any]:
 
 @router.get("/dataset")
 def dataset_info() -> dict[str, Any]:
+    """数据集说明 + 数据能力清单。
+
+    前端「数据说明」页用它来决定隐藏哪些图（比如这份数据没有收入列，
+    就不显示收入分布，也不会显示"暂无数据"的空白图）。
+    """
     meta = store.meta
     return {
+        "name": meta.get("name") or meta.get("source", ""),
         "source": meta.get("source", ""),
+        "source_page": meta.get("source_page", ""),
+        "desc": meta.get("desc", ""),
         "excel": meta.get("excel", ""),
         "rows": meta.get("rows", len(store.df)),
         "columns": meta.get("columns", len(store.df.columns)),
+        "raw_rows": meta.get("raw_rows", meta.get("rows", 0)),
+        "raw_columns": meta.get("raw_columns", 0),
         "fields": meta.get("fields", []),
         "missing_cells": meta.get("missing_cells", 0),
         "duplicate_rows": meta.get("duplicate_rows", 0),
+        "categories": [{"key": k, "name": v} for k, v in categories_of().items()],
+        "channels": [{"key": k, "name": v} for k, v in channels_of().items()],
+        "capabilities": capabilities(),
+        "contract": contract(),
+        "warnings": warnings(),
     }
+
+
+@router.get("/capabilities")
+def get_capabilities() -> dict[str, Any]:
+    """只取数据能力清单（前端启动时先问一次，决定页签显示）。"""
+    return capabilities()
 
 
 # ---------------------------------------------------------------- 总览
@@ -61,10 +84,7 @@ def get_insights(severity: str | None = None, category: str | None = None) -> di
     return {
         **data,
         "insights": items,
-        "counts": {
-            **data["counts"],
-            "filtered": len(items),
-        },
+        "counts": {**data["counts"], "filtered": len(items)},
     }
 
 
@@ -95,6 +115,7 @@ def get_personas() -> dict[str, Any]:
         "features": store.cluster["features"],
         "clusters": store.cluster["clusters"],
         "personas": store.personas,
+        "capabilities": capabilities(),
     }
 
 
@@ -118,20 +139,44 @@ def get_elbow(k_max: int = Query(8, ge=2, le=10)) -> dict[str, Any]:
 @router.get("/propensity")
 def get_propensity() -> dict[str, Any]:
     prop = store.propensity
+    if not prop.get("available", True):
+        return {
+            "available": False,
+            "reason": prop.get("reason", "数据不足以训练响应预测模型"),
+            "metrics": {},
+            "full_metrics": {},
+            "coefs": [],
+            "lift": [],
+            "base_rate": 0.0,
+            "threshold": 0.5,
+            "score_hist": [],
+            "top_customers": [],
+        }
+
     enriched = store.enriched.sort_values("prob", ascending=False)
-    top = enriched.head(50)[
-        ["customer_id", "cluster_name", "rfm_segment", "prob", "total_spend", "purchase_freq", "recency"]
-    ].to_dict(orient="records")
+    cols = [
+        "customer_id",
+        "cluster_name",
+        "rfm_segment",
+        "prob",
+        "total_spend",
+        "purchase_freq",
+        "recency",
+    ]
+    top = enriched.head(50)[[c for c in cols if c in enriched.columns]].to_dict(orient="records")
     for row in top:
         row["prob"] = clean(row["prob"])
     return {
+        "available": True,
+        "reason": "",
         "metrics": prop["train_metrics"],
         "full_metrics": prop["full_metrics"],
+        "features": prop.get("feature_labels", {}),
         "coefs": prop["coefs"],
         "lift": prop["lift"],
         "base_rate": prop["base_rate"],
         "threshold": prop["threshold"],
-        "score_hist": _score_hist(enriched["prob"]),
+        "score_hist": prop.get("score_hist") or _score_hist(enriched["prob"]),
         "top_customers": top,
     }
 
@@ -158,6 +203,7 @@ def get_association() -> dict[str, Any]:
         "rules": store.rules,
         "penetration": store.penetration,
         "basket_size": association.basket_size(store.df),
+        "categories": [{"key": k, "name": v} for k, v in categories_of().items()],
     }
 
 
@@ -179,11 +225,11 @@ def get_customers(
         table = table[table["cluster_name"] == cluster]
     if keyword:
         kw = keyword.strip().lower()
-        table = table[
-            table["customer_id"].astype(str).str.lower().str.contains(kw, na=False)
-            | table["education"].astype(str).str.lower().str.contains(kw, na=False)
-            | table["marital_status"].astype(str).str.lower().str.contains(kw, na=False)
-        ]
+        mask = table["customer_id"].astype(str).str.lower().str.contains(kw, na=False)
+        for col in ("education", "marital_status", "gender"):
+            if col in table.columns:
+                mask = mask | table[col].astype(str).str.lower().str.contains(kw, na=False)
+        table = table[mask]
     if sort in table.columns:
         table = table.sort_values(sort, ascending=(order != "desc"))
     total = len(table)
@@ -200,17 +246,16 @@ def get_customers(
         "total_spend",
         "purchase_freq",
         "recency",
-        "num_web",
-        "num_store",
-        "num_catalog",
+        *[f for f in channels_of() if f in table.columns],
         "rfm_segment",
         "cluster_name",
         "prob",
     ]
+    columns = [c for c in columns if c in table.columns]
     rows = []
     for record in page_rows[columns].to_dict(orient="records"):
         rows.append({k: clean(v) for k, v in record.items()})
-    return {"total": total, "page": page, "size": size, "rows": rows}
+    return {"total": total, "page": page, "size": size, "rows": rows, "columns": columns}
 
 
 @router.get("/customers/{customer_id}")
@@ -222,7 +267,8 @@ def get_customer(customer_id: str) -> dict[str, Any]:
     row = hit.iloc[0].to_dict()
     row = {k: clean(v) for k, v in row.items()}
     row["categories"] = [
-        {"name": label, "value": clean(row.get(field))} for field, label in CATEGORY_FIELDS.items()
+        {"name": label, "value": clean(row.get(field))}
+        for field, label in categories_of().items()
     ]
     return row
 
@@ -250,6 +296,9 @@ def create_plan(req: PlanRequest) -> dict[str, Any]:
 @router.get("/campaign/options")
 def campaign_options() -> dict[str, Any]:
     return {
-        "clusters": [{"name": p["name"], "size": p["size"], "headline": p["headline"]} for p in store.personas],
+        "clusters": [
+            {"name": p["name"], "size": p["size"], "headline": p["headline"]}
+            for p in store.personas
+        ],
         "rfm": [{"name": s["name"], "size": s["count"]} for s in store.segment_summary],
     }

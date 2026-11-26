@@ -1,170 +1,382 @@
 {
-  "rows": 1867,
-  "columns": 26,
-  "response_rate": 0.1548,
-  "avg_income": 51678.09,
-  "avg_spend": 564.83,
-  "avg_age": 51.1,
+  "source": "iFood 营销活动客户数据（Customer Personality Analysis）",
+  "source_page": "https://www.kaggle.com/datasets/imakash3011/customer-personality-analysis",
+  "desc": "巴西食品电商的客户画像与营销活动响应数据，2205 行 39 列，含收入、六品类消费额、购买渠道、历史活动响应。",
+  "excel": "Customer_Personality_Analysis.xlsx",
+  "rows": 2021,
+  "columns": 25,
+  "raw_rows": 2021,
+  "raw_columns": 39,
   "missing_cells": 0,
-  "duplicate_rows": 0,
+  "duplicate_rows": 184,
+  "generated_at": "2026-01-01（固定，保证可复现构建）",
   "fields": [
     {
       "name": "customer_id",
       "label": "客户编号",
-      "type": "字符串",
-      "desc": "系统生成的主键，格式 C00001"
+      "type": "category",
+      "desc": "每个客户的唯一标识；没有就用行号生成"
     },
     {
       "name": "age",
       "label": "年龄",
-      "type": "整数",
-      "desc": "由原始 Year_Birth 换算得到"
+      "type": "number",
+      "desc": "客户年龄，用于分箱与画像"
     },
     {
       "name": "age_group",
       "label": "年龄段",
-      "type": "字符串",
-      "desc": "18-30 / 31-40 / 41-50 / 51-60 / 60+"
+      "type": "category",
+      "desc": "按年龄分箱：18-30 / 31-40 / 41-50 / 51-60 / 60+"
+    },
+    {
+      "name": "income",
+      "label": "收入",
+      "type": "number",
+      "desc": "收入或收入水平评分；不同数据集单位不同（元/千元/评分）"
     },
     {
       "name": "education",
       "label": "学历",
-      "type": "字符串",
-      "desc": "Basic / 2n Cycle / Graduation / Master / PhD"
+      "type": "category",
+      "desc": "学历层级"
     },
     {
       "name": "marital_status",
       "label": "婚姻状况",
-      "type": "字符串",
-      "desc": "Single / Married / Together / Divorced / Widow"
+      "type": "category",
+      "desc": "婚姻状态"
     },
     {
-      "name": "income",
-      "label": "年收入",
-      "type": "浮点",
-      "desc": "家庭年收入（已剔除 666666 等异常值）"
-    },
-    {
-      "name": "kidhome",
-      "label": "小孩数",
-      "type": "整数",
-      "desc": "家中儿童数量"
-    },
-    {
-      "name": "teenhome",
-      "label": "青少年数",
-      "type": "整数",
-      "desc": "家中青少年数量"
-    },
-    {
-      "name": "recency",
-      "label": "最近购买间隔",
-      "type": "整数",
-      "desc": "距上次购买的天数，越小越活跃"
+      "name": "children",
+      "label": "子女数",
+      "type": "number",
+      "desc": "家中子女数量（kidhome + teenhome 合并）"
     },
     {
       "name": "tenure_days",
       "label": "在网天数",
-      "type": "整数",
-      "desc": "成为客户至今天数"
+      "type": "number",
+      "desc": "成为客户至今的天数"
     },
     {
-      "name": "mnt_wines",
-      "label": "葡萄酒消费",
-      "type": "浮点",
-      "desc": "近两年葡萄酒消费金额"
-    },
-    {
-      "name": "mnt_fruits",
-      "label": "水果消费",
-      "type": "浮点",
-      "desc": "近两年水果消费金额"
-    },
-    {
-      "name": "mnt_meat",
-      "label": "肉类消费",
-      "type": "浮点",
-      "desc": "近两年肉类消费金额"
-    },
-    {
-      "name": "mnt_fish",
-      "label": "鱼类消费",
-      "type": "浮点",
-      "desc": "近两年鱼类消费金额"
-    },
-    {
-      "name": "mnt_sweet",
-      "label": "甜食消费",
-      "type": "浮点",
-      "desc": "近两年甜食消费金额"
-    },
-    {
-      "name": "mnt_gold",
-      "label": "金饰消费",
-      "type": "浮点",
-      "desc": "近两年金饰/礼品消费金额"
-    },
-    {
-      "name": "total_spend",
-      "label": "总消费额",
-      "type": "浮点",
-      "desc": "六大品类消费之和（RFM 中的 M）"
-    },
-    {
-      "name": "num_deals",
-      "label": "折扣购买次数",
-      "type": "整数",
-      "desc": "使用折扣完成的购买次数"
-    },
-    {
-      "name": "num_web",
-      "label": "线上购买次数",
-      "type": "整数",
-      "desc": "网站购买次数"
-    },
-    {
-      "name": "num_catalog",
-      "label": "目录购买次数",
-      "type": "整数",
-      "desc": "邮购目录购买次数"
-    },
-    {
-      "name": "num_store",
-      "label": "门店购买次数",
-      "type": "整数",
-      "desc": "线下门店购买次数"
+      "name": "recency",
+      "label": "最近购买间隔",
+      "type": "number",
+      "desc": "距离上次购买/互动的天数，越小越活跃"
     },
     {
       "name": "purchase_freq",
       "label": "购买频次",
-      "type": "整数",
-      "desc": "三种渠道购买次数之和（RFM 中的 F）"
+      "type": "number",
+      "desc": "一段时间内的购买/互动次数"
+    },
+    {
+      "name": "total_spend",
+      "label": "累计消费",
+      "type": "number",
+      "desc": "客户累计消费金额；没有金额时可能用消费评分代替（会在 warnings 里注明）"
+    },
+    {
+      "name": "num_deals",
+      "label": "折扣次数",
+      "type": "number",
+      "desc": "使用折扣/优惠券的次数"
     },
     {
       "name": "web_visits_month",
-      "label": "月均访问次数",
-      "type": "整数",
-      "desc": "最近一个月访问网站次数"
+      "label": "月访问次数",
+      "type": "number",
+      "desc": "最近一个月访问/浏览次数"
     },
     {
       "name": "accepted_total",
       "label": "历史活动接受数",
-      "type": "整数",
-      "desc": "前 5 次营销活动中接受的次数"
+      "type": "number",
+      "desc": "历史营销活动累计接受次数，是响应预测最强特征之一"
     },
     {
       "name": "response",
-      "label": "本次活动响应",
-      "type": "0/1",
-      "desc": "是否响应最近一次营销活动，建模标签"
+      "label": "活动响应",
+      "type": "number",
+      "desc": "是否响应了营销活动：1=响应/购买，0=未响应"
     },
     {
       "name": "complain",
       "label": "是否投诉",
-      "type": "0/1",
-      "desc": "近两年是否投诉过"
+      "type": "number",
+      "desc": "是否有投诉记录"
+    },
+    {
+      "name": "mnt_wines",
+      "label": "葡萄酒",
+      "type": "number",
+      "desc": "品类消费额：葡萄酒"
+    },
+    {
+      "name": "mnt_fruits",
+      "label": "水果",
+      "type": "number",
+      "desc": "品类消费额：水果"
+    },
+    {
+      "name": "mnt_meat",
+      "label": "肉类",
+      "type": "number",
+      "desc": "品类消费额：肉类"
+    },
+    {
+      "name": "mnt_fish",
+      "label": "鱼类",
+      "type": "number",
+      "desc": "品类消费额：鱼类"
+    },
+    {
+      "name": "mnt_sweet",
+      "label": "甜食",
+      "type": "number",
+      "desc": "品类消费额：甜食"
+    },
+    {
+      "name": "mnt_gold",
+      "label": "金饰礼品",
+      "type": "number",
+      "desc": "品类消费额：金饰礼品"
+    },
+    {
+      "name": "num_web",
+      "label": "线上商城",
+      "type": "number",
+      "desc": "渠道购买次数：线上商城"
+    },
+    {
+      "name": "num_catalog",
+      "label": "邮购目录",
+      "type": "number",
+      "desc": "渠道购买次数：邮购目录"
+    },
+    {
+      "name": "num_store",
+      "label": "线下门店",
+      "type": "number",
+      "desc": "渠道购买次数：线下门店"
     }
   ],
-  "source": "https://cdn.jsdelivr.net/gh/nailson/ifood-data-business-analyst-test@master/ifood_df.csv",
-  "excel": "backend/data/raw/Customer_Personality_Analysis.xlsx"
+  "contract": {
+    "grain": "customer",
+    "grain_label": "客户级宽表",
+    "mapping": {
+      "grain": "customer",
+      "grain_label": "客户级宽表",
+      "rows": [
+        {
+          "target": "age",
+          "label": "年龄",
+          "source": "Age",
+          "confidence": "高",
+          "how": "列名完全一致"
+        },
+        {
+          "target": "income",
+          "label": "收入",
+          "source": "Income",
+          "confidence": "高",
+          "how": "列名完全一致"
+        },
+        {
+          "target": "recency",
+          "label": "最近购买间隔",
+          "source": "Recency",
+          "confidence": "高",
+          "how": "列名完全一致"
+        },
+        {
+          "target": "total_spend",
+          "label": "累计消费",
+          "source": "MntTotal",
+          "confidence": "高",
+          "how": "列名完全一致"
+        },
+        {
+          "target": "tenure_days",
+          "label": "在网天数",
+          "source": "Customer_Days",
+          "confidence": "高",
+          "how": "列名完全一致"
+        },
+        {
+          "target": "num_deals",
+          "label": "折扣次数",
+          "source": "NumDealsPurchases",
+          "confidence": "中",
+          "how": "列名包含别名"
+        },
+        {
+          "target": "web_visits_month",
+          "label": "月访问次数",
+          "source": "NumWebVisitsMonth",
+          "confidence": "高",
+          "how": "列名完全一致"
+        },
+        {
+          "target": "accepted_total",
+          "label": "历史活动接受数",
+          "source": "AcceptedCmpOverall",
+          "confidence": "高",
+          "how": "列名完全一致"
+        },
+        {
+          "target": "response",
+          "label": "活动响应",
+          "source": "Response",
+          "confidence": "高",
+          "how": "列名完全一致"
+        },
+        {
+          "target": "complain",
+          "label": "是否投诉",
+          "source": "Complain",
+          "confidence": "高",
+          "how": "列名完全一致"
+        },
+        {
+          "target": "children",
+          "label": "子女数",
+          "source": "Kidhome + Teenhome",
+          "confidence": "高",
+          "how": "列名完全一致"
+        },
+        {
+          "target": "mnt_wines",
+          "label": "葡萄酒",
+          "source": "MntWines",
+          "confidence": "高",
+          "how": "品类识别：列名含「wine」"
+        },
+        {
+          "target": "mnt_fruits",
+          "label": "水果",
+          "source": "MntFruits",
+          "confidence": "高",
+          "how": "品类识别：列名含「fruit」"
+        },
+        {
+          "target": "mnt_meat",
+          "label": "肉类",
+          "source": "MntMeatProducts",
+          "confidence": "高",
+          "how": "品类识别：列名含「meat」"
+        },
+        {
+          "target": "mnt_fish",
+          "label": "鱼类",
+          "source": "MntFishProducts",
+          "confidence": "高",
+          "how": "品类识别：列名含「fish」"
+        },
+        {
+          "target": "mnt_sweet",
+          "label": "甜食",
+          "source": "MntSweetProducts",
+          "confidence": "高",
+          "how": "品类识别：列名含「sweet」"
+        },
+        {
+          "target": "mnt_gold",
+          "label": "金饰礼品",
+          "source": "MntGoldProds",
+          "confidence": "高",
+          "how": "品类识别：列名含「gold」"
+        },
+        {
+          "target": "num_web",
+          "label": "线上商城",
+          "source": "NumWebPurchases",
+          "confidence": "高",
+          "how": "渠道识别：列名含「web」"
+        },
+        {
+          "target": "num_catalog",
+          "label": "邮购目录",
+          "source": "NumCatalogPurchases",
+          "confidence": "高",
+          "how": "渠道识别：列名含「catalog」"
+        },
+        {
+          "target": "num_store",
+          "label": "线下门店",
+          "source": "NumStorePurchases",
+          "confidence": "高",
+          "how": "渠道识别：列名含「store」"
+        }
+      ],
+      "unused_columns": [
+        "AcceptedCmp3",
+        "AcceptedCmp4",
+        "AcceptedCmp5",
+        "AcceptedCmp1",
+        "AcceptedCmp2",
+        "Z_CostContact",
+        "Z_Revenue",
+        "MntRegularProds"
+      ],
+      "aggregations": [
+        "children = Kidhome + Teenhome",
+        "学历由 education_* 的 one-hot 列反解",
+        "婚姻状况由 marital_* 的 one-hot 列反解",
+        "purchase_freq = 各渠道购买次数之和（num_web、num_catalog、num_store）"
+      ],
+      "warnings": []
+    },
+    "reference_date": "取构建当天（无日期列）"
+  },
+  "capabilities": {
+    "customers": 2021,
+    "has_income": true,
+    "has_monetary": true,
+    "has_recency": true,
+    "has_frequency": true,
+    "has_response": true,
+    "response_positive": 311,
+    "categories": {
+      "mnt_wines": "葡萄酒",
+      "mnt_fruits": "水果",
+      "mnt_meat": "肉类",
+      "mnt_fish": "鱼类",
+      "mnt_sweet": "甜食",
+      "mnt_gold": "金饰礼品"
+    },
+    "channels": {
+      "num_web": "线上商城",
+      "num_catalog": "邮购目录",
+      "num_store": "线下门店"
+    },
+    "demographics": {
+      "age": true,
+      "gender": false,
+      "education": true,
+      "marital_status": true,
+      "children": true,
+      "income": true
+    },
+    "clustering": true,
+    "rfm": true,
+    "association": true,
+    "propensity": true,
+    "campaign": true
+  },
+  "categories": {
+    "mnt_wines": "葡萄酒",
+    "mnt_fruits": "水果",
+    "mnt_meat": "肉类",
+    "mnt_fish": "鱼类",
+    "mnt_sweet": "甜食",
+    "mnt_gold": "金饰礼品"
+  },
+  "channels": {
+    "num_web": "线上商城",
+    "num_catalog": "邮购目录",
+    "num_store": "线下门店"
+  },
+  "warnings": []
 }

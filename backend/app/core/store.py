@@ -11,7 +11,7 @@ from typing import Any
 
 import pandas as pd
 
-from .config import CLUSTER_FEATURES, settings
+from .config import settings
 from . import association, campaign, clustering, dataset, insights, overview, persona, propensity, rfm
 
 
@@ -56,7 +56,10 @@ class Store:
     def cluster(self) -> dict[str, Any]:
         if self._cluster is None:
             self._cluster = clustering.run_clustering(
-                self.rfm, CLUSTER_FEATURES, k=settings.cluster_k, seed=settings.random_state
+                self.rfm,
+                clustering.feature_list(self.rfm),
+                k=settings.cluster_k,
+                seed=settings.random_state,
             )
         return self._cluster
 
@@ -120,11 +123,17 @@ class Store:
     @property
     def enriched(self) -> pd.DataFrame:
         """明细表 + RFM 客群 + 聚类客群 + 转化概率。前端表格与导出都用它。"""
-        table = self.cluster_table.merge(
-            self.scores[["customer_id", "prob", "decile", "rank"]],
-            on="customer_id",
-            how="left",
-        )
+        table = self.cluster_table
+        scores = self.scores
+        if scores is not None and not scores.empty:
+            table = table.merge(
+                scores[["customer_id", "prob", "decile", "rank"]],
+                on="customer_id",
+                how="left",
+            )
+            table["prob"] = table["prob"].fillna(0.0)
+        else:  # 这份数据没法训练响应模型
+            table = table.assign(prob=0.0, decile=0, rank=0)
         return table
 
     def plan(self, segment: str, budget: float, cost_per_contact: float, discount: float) -> dict:
@@ -152,18 +161,20 @@ class Store:
         )
 
     def status(self) -> dict:
+        caps = dataset.capabilities()
         return {
             "customers": int(len(self.df)),
             "segments": len(self.segment_summary),
             "clusters": len(self.personas),
             "rules": len(self.rules),
+            "propensity": bool(caps.get("propensity")),
             "uptime_seconds": round(time.time() - self._started_at, 1),
         }
 
     def reload(self) -> None:
         """数据更新后重新计算（留的钩子，方便未来接定时任务）。"""
         with self._lock:
-            dataset.load_customers.cache_clear()
+            dataset.clear_cache()
             self._df = None
             self._rfm = None
             self._cluster = None

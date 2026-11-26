@@ -14,14 +14,20 @@ import pandas as pd
 from mlxtend.frequent_patterns import apriori, association_rules
 from mlxtend.preprocessing import TransactionEncoder
 
-from .config import CATEGORY_FIELDS
-from .utils import clean, pct
+from .dataset import categories as categories_of
+from .utils import clean, pct, sum_of
 
 
 def build_transactions(df: pd.DataFrame, min_amount: float = 1.0) -> list[set[str]]:
     """把每行客户转成「买过的品类集合」。金额 > 阈值的品类才算买过。"""
-    labels = list(CATEGORY_FIELDS.values())
-    fields = list(CATEGORY_FIELDS.keys())
+    cats = categories_of()
+    if not cats:
+        return []
+    labels = list(cats.values())
+    fields = [f for f in cats if f in df.columns]
+    labels = [cats[f] for f in fields]
+    if not fields:
+        return []
     transactions: list[set[str]] = []
     for row in df[fields].to_numpy(dtype=float):
         basket = {
@@ -104,20 +110,23 @@ def penetration(df: pd.DataFrame) -> list[dict[str, Any]]:
     """品类渗透率：多少比例的客户买过该品类 + 人均消费额。"""
     total = len(df)
     rows = []
-    for field, label in CATEGORY_FIELDS.items():
-        buyers = int((df[field] > 0).sum())
+    for field, label in categories_of().items():
+        if field not in df.columns:
+            continue
+        series = pd.to_numeric(df[field], errors="coerce").fillna(0.0)
+        buyers = int((series > 0).sum())
         rows.append(
             {
                 "name": label,
                 "buyers": buyers,
                 "penetration": pct(buyers, total),
-                "avg_spend": clean(df[field].mean()),
-                "buyer_avg_spend": clean(df.loc[df[field] > 0, field].mean())
-                if buyers
-                else 0.0,
-                "revenue": clean(df[field].sum()),
+                "avg_spend": clean(float(series.mean())),
+                "buyer_avg_spend": clean(float(series[series > 0].mean())) if buyers else 0.0,
+                "revenue": clean(float(series.sum())),
             }
         )
+    if not rows:
+        return []
     rows.sort(key=lambda r: -(r["revenue"] or 0))
     total_rev = sum(r["revenue"] or 0 for r in rows) or 1
     for r in rows:
@@ -127,11 +136,14 @@ def penetration(df: pd.DataFrame) -> list[dict[str, Any]]:
 
 def basket_size(df: pd.DataFrame) -> list[dict[str, Any]]:
     """一单买几个品类的人数分布。"""
+    fields = [f for f in categories_of() if f in df.columns]
+    if not fields:
+        return []
     counts = []
-    for row in df[list(CATEGORY_FIELDS.keys())].to_numpy(dtype=float):
+    for row in df[fields].to_numpy(dtype=float):
         counts.append(int((row > 0).sum()))
     series = pd.Series(counts).value_counts().sort_index()
-    total = len(series) or 1
+    total = int(series.sum()) or 1
     return [
         {"name": f"{int(k)} 个品类", "value": int(v), "ratio": pct(v, total)}
         for k, v in series.items()

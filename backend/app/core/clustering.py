@@ -53,41 +53,59 @@ def fit_kmeans(
     return model, scaler, scaled, sil
 
 
+def feature_list(df: pd.DataFrame) -> list[str]:
+    """聚类使用的特征：这份数据里真实存在、且不是常量的数值列。"""
+    from .dataset import numeric_fields
+
+    wanted = ["income", "total_spend", "purchase_freq", "recency", "num_deals", "web_visits_month", "age"]
+    cols = [c for c in wanted if c in df.columns]
+    if len(cols) < 3:  # 字段太少就把其余数值列补上（比如只有金额+频次+最近间隔的数据集）
+        extra = [c for c in numeric_fields() if c in df.columns and c not in cols]
+        cols += extra[: max(0, 3 - len(cols))]
+    return [c for c in cols if pd.to_numeric(df[c], errors="coerce").nunique() > 1]
+
+
 def run_clustering(
     df: pd.DataFrame, features: list[str], k: int = 4, seed: int = 42
 ) -> dict[str, Any]:
     """对给定特征做 KMeans，并把人话讲得通的客群名、状态、规模算出来。"""
+    from .utils import mean_of
+
+    features = [f for f in features if f in df.columns]
+    if not features or len(df) < 4:
+        raise ValueError("客户数量或可用数值列太少，无法聚类（至少需要 4 位客户和 1 个数值列）。")
     k = max(2, min(k, len(df) // 20 or 2))
-    matrix = df[features].to_numpy(dtype=float)
+    matrix = df[features].apply(pd.to_numeric, errors="coerce").fillna(0.0).to_numpy(dtype=float)
     model, scaler, scaled, sil = fit_kmeans(matrix, k=k, seed=seed)
     labels = model.labels_
 
     work = df.copy()
     work["cluster"] = labels.astype(int)
 
-    # 簇级画像统计
-    stats = (
-        work.groupby("cluster")
-        .agg(
-            size=("customer_id", "count"),
-            avg_spend=("total_spend", "mean"),
-            avg_freq=("purchase_freq", "mean"),
-            avg_recency=("recency", "mean"),
-            avg_income=("income", "mean"),
-            avg_age=("age", "mean"),
-            response_rate=("response", "mean"),
+    # 簇级画像统计（用 mean_of 兼容缺字段的数据集）
+    rows = []
+    for cid, sub in work.groupby("cluster"):
+        rows.append(
+            {
+                "cluster": int(cid),
+                "size": int(len(sub)),
+                "avg_spend": mean_of(sub, "total_spend"),
+                "avg_freq": mean_of(sub, "purchase_freq"),
+                "avg_recency": mean_of(sub, "recency"),
+                "avg_income": mean_of(sub, "income"),
+                "avg_age": mean_of(sub, "age"),
+                "response_rate": mean_of(sub, "response"),
+            }
         )
-        .reset_index()
-    )
+    stats = pd.DataFrame(rows)
 
     # 综合得分：花得多、来得勤、最近买过 = 高价值
     def z(col: str) -> pd.Series:
         v = stats[col]
-        return (v - v.mean()) / (v.std() or 1)
+        std = v.std()
+        return (v - v.mean()) / (std if std else 1.0)
 
-    stats["score"] = (
-        0.5 * z("avg_spend") + 0.3 * z("avg_freq") - 0.2 * z("avg_recency")
-    ).round(4)
+    stats["score"] = (0.5 * z("avg_spend") + 0.3 * z("avg_freq") - 0.2 * z("avg_recency")).round(4)
     stats = stats.sort_values("score", ascending=False).reset_index(drop=True)
 
     naming = {}
@@ -95,7 +113,7 @@ def run_clustering(
         base = NAME_POOL[rank] if rank < len(NAME_POOL) else f"客群{rank + 1}"
         naming[int(row["cluster"])] = base
 
-    recency_line = float(df["recency"].mean()) * 1.15
+    recency_line = mean_of(df, "recency") * 1.15
     clusters = []
     for rank, row in stats.iterrows():
         cid = int(row["cluster"])
@@ -138,7 +156,10 @@ def elbow_curve(
     df: pd.DataFrame, features: list[str], ks: list[int], seed: int = 42
 ) -> list[dict]:
     """肘部法则数据：k 越大惯性越小，找「下降明显变缓」的拐点。"""
-    matrix = df[features].to_numpy(dtype=float)
+    features = [f for f in features if f in df.columns]
+    if not features or len(df) < 8:
+        return []
+    matrix = df[features].apply(pd.to_numeric, errors="coerce").fillna(0.0).to_numpy(dtype=float)
     points = []
     for k in ks:
         if k < 2 or k >= len(df) // 10:
