@@ -403,7 +403,7 @@ python scripts/export_openapi.py       # 导出 OpenAPI / Postman 给 Apifox
 | [`docs/GLOSSARY.md`](docs/GLOSSARY.md) | 你自己 / 答辩听众 | AUC、Lift、轮廓系数、热力图、置信度……**每个术语都配本项目真实数字和"怎么讲"话术** |
 | [`docs/CODE_TOUR.md`](docs/CODE_TOUR.md) | 你自己 / 面试官 | 逐个文件讲清职责、执行链路、为什么这么设计；含二次开发手册 |
 | [`docs/PROJECT_GUIDE.md`](docs/PROJECT_GUIDE.md) | 汇报现场 | 30 秒 / 3 分钟 / 8 分钟三套讲稿 + 13 个高频追问 |
-| [`docs/API.md`](docs/API.md) | 前后端联调 | 14 个接口的字段级说明与示例 |
+| [`docs/API.md`](docs/API.md) | 前后端联调 | 16 个接口的字段级说明与示例 |
 | [`deploy/DOCKER.md`](deploy/DOCKER.md) | 交付 / 换机器 | 镜像结构、一键启动、离线部署包、11 条排障表 |
 | [`deploy/README.md`](deploy/README.md) | 本机运维 | Nginx 部署步骤、Linux systemd、缓存策略对照 |
 

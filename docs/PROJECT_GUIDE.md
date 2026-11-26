@@ -67,6 +67,16 @@
 - Agent 只调用工具、不自己算数：保证**对话里给出的数字和页面上完全一致**（这点很多项目会翻车）
 - 前后端分离：前端可独立部署/回滚，后端只提供 JSON，便于以后接 App、小程序
 
+**怎么跑起来（三种场景，一句话一个）**
+
+| 场景 | 命令 | 说明 |
+| --- | --- | --- |
+| 本机开发 | `python backend/run.py` + 本地 Nginx（`deploy/nginx.conf`） | 改前端源码后 `pnpm build` 立刻生效 |
+| 一台机器完整跑 | `docker compose up -d --build` → http://localhost:8080 | web（Nginx）+ api（FastAPI）两个容器，只有一个对外端口 |
+| 换机器交付 | `deploy/make-bundle.ps1` 打包 → 目标机 `docker load -i images.tar` + `docker compose up -d` | 目标机只要 Docker，不用 Python/Node，不用联网 |
+
+> 只有 Nginx 一前端方式：本地用 `deploy/nginx.conf`，容器里用 `deploy/nginx.docker.conf`，两者规则一致（静态 + `/api` 反代 + SPA 回落）。
+
 ---
 
 ## 3. 数据从哪来（被追问最多的地方）
@@ -316,8 +326,8 @@ A：正样本只有 15.5%，0.5 会过度保守导致召回塌陷。用 PR 曲�
 **Q11：这个项目能落地到真实企业吗？**
 A：可以直接替换数据源跑通，需要的改造是：① 对接 CRM 数据仓库；② 接真实触达通道（短信/企微/邮件 SDK）；③ 加权限与审计；④ 建立 ROI 回流闭环做持续优化。
 
-**Q12：为什么前后端分离？**
-A：前端可独立部署与独立回滚；后端只提供 JSON API，方便以后接 App、小程序、第三方系统。部署统一走 Nginx（`deploy/nginx.conf`）：静态资源由 Nginx 托管、`/api/` 反代到 FastAPI，同源访问不需要 CORS，演示和上线是同一套配置。
+**Q12：为什么前后端分离？怎么部署的？**
+A：前端可独立部署与独立回滚；后端只提供 JSON API，方便以后接 App、小程序、第三方系统。部署**只有一种前端方式——Nginx**：静态资源由 Nginx 托管、`/api/` 反代到 FastAPI，同源访问不需要 CORS。同一套配置有两种跑法：① 本机 `.venv` + 本地 Nginx（`deploy/nginx.conf`，改代码方便）；② Docker Compose（`docker compose up -d --build`），web 容器就是 Nginx、api 容器是 FastAPI，只有 web 对外暴露 8080，后端在容器内网。**换机器交付时用 `deploy/make-bundle.ps1` 打离线包**（镜像 + compose + 说明），目标机 `docker load` 后 `up -d`，不用装 Python/Node、不用联网——这一条最能打动"评委问你怎么交付"。
 
 **Q13：项目里有没有用到大模型？**
 A：有，但是**可选的**：配了 `LLM_BASE_URL/LLM_API_KEY` 就走 Function Calling，不配就走规则引擎。既展示大模型应用能力，又保证离线可演示——这是工程上很实用的取舍。

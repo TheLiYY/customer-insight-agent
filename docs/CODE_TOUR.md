@@ -24,7 +24,7 @@
 ┌───────────────────────────▼──────────────────────────────────┐
 │  FastAPI（backend/app/）                                      │
 │                                                              │
-│  api/routes.py        ← 13 个分析接口                        │
+│  api/routes.py        ← 14 个分析接口                        │
 │  agent/routes.py      ← 对话接口                             │
 │         │                                                    │
 │         ▼                                                    │
@@ -99,8 +99,18 @@ customer-insight-agent/
 ├── scripts/
 │   ├── prepare_data.py            # 下载(或 --xlsx 读本地 Excel) + 清洗 + 生成 Excel/CSV/meta
 │   ├── export_report.py           # 生成分析报告 Excel（9 个 sheet）
-│   ├── export_openapi.py          # 导出 OpenAPI / Postman 给 Apifox 用
-│   └── (前端由 deploy/nginx.conf 托管，没有其它静态服务脚本)
+│   └── export_openapi.py          # 导出 OpenAPI / Postman 给 Apifox 用
+├── deploy/                        # 部署相关（前端只走 Nginx，两种跑法）
+│   ├── nginx.conf                 # 本机 Nginx：托管 dist + 反代 /api → 127.0.0.1:8000
+│   ├── nginx.docker.conf          # 容器内 Nginx：托管 dist + 反代 /api → api:8000
+│   ├── Dockerfile.api             # 后端镜像（Python 3.13 + 依赖 + 内置数据）
+│   ├── Dockerfile.web             # 前端镜像（node:20 构建 → nginx 托管）
+│   ├── docker-compose.bundle.yml  # 换机器用（无 build 段，配 images.tar）
+│   ├── make-bundle.ps1            # 一键打离线部署包
+│   ├── BUNDLE_README.md           # 部署包里给目标机看的三步说明
+│   └── DOCKER.md                  # Docker 部署原理与排障表
+├── docker-compose.yml             # 一键启动 web + api（带 build 段）
+├── .dockerignore                  # 构建上下文排除项
 └── docs/                          # README 之外的说明文档都在这里
 ```
 
@@ -372,7 +382,7 @@ def build_insights(df, kpis, segments, personas, prop, rules, penetration) -> di
 `_lock` 目前只用于 `reload()`，因为懒加载的计算是幂等的（重复算一次结果一样）。
 数据量大到需要严格单例计算时，把 `if self._x is None` 换成双检锁即可。
 
-### 4.12 `api/routes.py` — 13 个接口
+### 4.12 `api/routes.py` — 14 个接口
 
 全部是「取 store 的某个 property → 组装成 JSON」，几乎不含逻辑，所以很好读。
 唯一有业务的是 `GET /api/customers`（分页 + 筛选 + 排序）和
@@ -534,3 +544,45 @@ python scripts/export_report.py
 4. **不做数据库**：1867 行 CSV 读取耗时 <100ms，上数据库反而增加部署复杂度。数据涨到十万级时换 DuckDB 即可。
 5. **Agent 双模式 + 规则兜底**：演示稳定性的优先级高于"看起来高级"。
 6. **自动结论文案写死在代码里**：保证每条结论可追溯到数字，不会出现"大模型编了个不存在的 30%"。
+7. **部署只保留 Nginx 一种前端方式**：静态托管 + `/api` 反代同源，省掉 CORS 与跨域调试；本机与容器只是换一份 conf。
+
+---
+
+## 9. 部署链路（Docker 版是怎么跑起来的）
+
+想让别人也能跑，最省事的是两个容器。执行 `docker compose up -d --build` 之后发生的事：
+
+```
+① 构建阶段（只在这台「打包机」上发生，且只需要一次）
+   deploy/Dockerfile.web
+     node:20 → npm i -g pnpm → pnpm install → pnpm build → 产出 /app/dist
+     ↓ 把 dist 拷进 nginx:stable-alpine 的 /usr/share/nginx/html
+   deploy/Dockerfile.api
+     python:3.13-slim → pip install -r backend/requirements.txt（含 sklearn/mlxtend）
+     → 拷 backend/ 与 scripts/ → 跑一次 prepare_data.py（离线，用仓库自带原始 CSV）
+     ↑ 所以镜像里的 customers.csv 与代码版本永远一致
+
+② 运行阶段
+   api 容器：uvicorn app.main:app --host 0.0.0.0 --port 8000（不向宿主机发布端口）
+   web 容器：nginx 监听 80，宿主机 8080 → 容器 80
+             /            → 静态文件（index.html 不缓存，/assets 强缓存 1 年）
+             /api/        → proxy_pass http://api:8000（容器内网 DNS 解析服务名 api）
+             /docs /openapi.json → 同样反代，Apifox/浏览器可直接打开
+             /healthz     → 返回 ok，给容器 HEALTHCHECK 用
+
+③ 依赖顺序
+   api 的 HEALTHCHECK 打 /api/health，compose 用 depends_on: service_healthy
+   等 api 真起来了才起 web，避免首次打开页面接口 502
+
+④ 换机器
+   docker save 两个镜像 → images.tar；目标机 docker load → compose up -d
+   基础镜像层也在 tar 里，所以目标机不需要联网、不需要源码
+```
+
+**为什么前端镜像不在运行期装 Node**：多阶段构建让"构建依赖"只存在于第一阶段，
+最终镜像只有 Nginx + 静态文件（约 50MB），体积小、启动快、攻击面小。
+
+**为什么 api 不发布端口**：只有 Nginx 对外，后端端口在宿主机上根本不存在，
+减少暴露面；同时浏览器只访问一个源，天然没有跨域问题。
+
+排障与端口/数据替换见 [`deploy/DOCKER.md`](../deploy/DOCKER.md)。
