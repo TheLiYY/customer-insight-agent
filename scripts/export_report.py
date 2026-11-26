@@ -1,4 +1,4 @@
-﻿"""生成一份可直接交付的《客户洞察分析报告》Excel。
+"""生成一份可直接交付的《客户洞察分析报告》Excel。
 
 用法（项目根目录）：
     .venv\\Scripts\\python.exe scripts\\export_report.py
@@ -63,6 +63,14 @@ def main() -> None:
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     wb = xlsxwriter.Workbook(str(OUT))
+    # 固定文档属性，保证重复运行产出字节一致（便于 git diff 与可复现构建）
+    wb.set_properties(
+        {
+            "title": "客户洞察分析报告",
+            "author": "Customer Insight Agent",
+            "created": datetime(2026, 1, 1),
+        }
+    )
     fmt_title = wb.add_format(TITLE_FMT)
     fmt_note = wb.add_format(dict(italic=True, font_color="#7a8899", text_wrap=True))
     fmt_head = wb.add_format(HEAD_FMT)
@@ -78,8 +86,8 @@ def main() -> None:
     ws.set_column(0, 0, 18)
     ws.set_column(1, 1, 96)
     ws.write(0, 0, "客户洞察与精准营销分析报告", fmt_title)
-    ws.write(1, 0, "生成时间", fmt_bold)
-    ws.write(1, 1, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), fmt_cell)
+    ws.write(1, 0, "生成口径", fmt_bold)
+    ws.write(1, 1, "可复现构建（数据快照 2026-11，运行 scripts/export_report.py 可重新生成）", fmt_cell)
     rows = [
         ("数据来源", meta.get("source", "")),
         ("数据说明", "公开数据集 Customer Personality Analysis（iFood 营销活动），已清洗为结构化客户宽表。"),

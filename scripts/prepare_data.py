@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import shutil
 import urllib.request
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -30,6 +31,10 @@ RAW_CSV = RAW / "ifood_df.csv"
 EXCEL = RAW / "Customer_Personality_Analysis.xlsx"
 OUT_CSV = PROCESSED / "customers.csv"
 META = PROCESSED / "dataset_meta.json"
+
+# 固定文档时间戳，保证重复运行产出字节一致（便于 git diff 与可复现构建）
+FIXED_TS = datetime(2026, 1, 1)
+FIXED_ZIP_TS = (2026, 1, 1, 0, 0, 0)
 
 # 原始 CSV 中 one-hot 字段 -> 可读标签
 MARITAL_COLS = {
@@ -180,11 +185,47 @@ def write_excel(df: pd.DataFrame) -> None:
         detail.to_excel(writer, sheet_name="客户明细", index=False)
         field_df.to_excel(writer, sheet_name="字段字典", index=False)
         source_df.to_excel(writer, sheet_name="数据来源", index=False)
+        # 固定文档时间戳，保证重复运行产出字节一致（便于 git diff 与可复现构建）
+        writer.book.properties.created = FIXED_TS
+        writer.book.properties.modified = FIXED_TS
         for ws in writer.book.worksheets:
             for column_cells in ws.columns:
                 width = max(len(str(c.value)) if c.value is not None else 8 for c in column_cells)
                 ws.column_dimensions[column_cells[0].column_letter].width = min(max(width + 2, 10), 42)
+    normalize_zip_timestamps(EXCEL)
     print(f"[ok  ] 写入 {EXCEL}")
+
+
+def normalize_zip_timestamps(path: Path) -> None:
+    """把 xlsx 内部的时间戳归一化（openpyxl 保存时会把 modified 改成当前时间）。
+
+    这样同一份数据重复运行得到完全相同的字节，提交 git 时不会产生无意义的二进制改动。
+    """
+    import re
+    import zipfile
+
+    fixed_text = FIXED_TS.strftime("%Y-%m-%dT%H:%M:%SZ")
+    with zipfile.ZipFile(path) as zf:
+        members = [(info.filename, zf.read(info.filename)) for info in zf.infolist()]
+
+    normalized = []
+    for name, data in members:
+        if name == "docProps/core.xml":
+            text = data.decode("utf-8")
+            text = re.sub(
+                r"(<dcterms:modified[^>]*>)([^<]*)(</dcterms:modified>)",
+                lambda m: m.group(1) + fixed_text + m.group(3),
+                text,
+            )
+            data = text.encode("utf-8")
+        normalized.append((name, data))
+
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as zf:
+        for name, data in normalized:
+            info = zipfile.ZipInfo(name, date_time=FIXED_ZIP_TS)
+            info.compress_type = zipfile.ZIP_DEFLATED
+            info.external_attr = 0o600 << 16
+            zf.writestr(info, data)
 
 
 def write_meta(df: pd.DataFrame) -> None:

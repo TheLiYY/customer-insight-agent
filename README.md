@@ -177,6 +177,8 @@ npm run build        # 重新生成 dist，后端随即生效
 | `backend/data/processed/dataset_meta.json` | 字段中英文名、类型、业务含义 |
 | `backend/data/processed/Customer_Insight_Report.xlsx` | 分析报告（9 个 sheet + 4 张原生图表） |
 
+> 上面两个 Excel 使用固定文档时间戳生成：同一份数据重复运行，产物字节完全一致，所以放进 git 也不会出现无意义的二进制改动。
+
 ---
 
 ## 6. 算法说明（都给得出公式）
