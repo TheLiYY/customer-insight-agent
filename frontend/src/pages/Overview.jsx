@@ -44,7 +44,7 @@ export default function Overview() {
 
       <div className="grid grid-2">
         {has(data.age) ? (
-          <Card title="年龄结构" subtitle="按年龄段看客户规模，判断主力人群到底是谁">
+          <Card title="年龄结构" >
             <Chart
               height={260}
               option={{
@@ -62,12 +62,12 @@ export default function Overview() {
                   },
                 ],
               }}
-            />
+ />
           </Card>
         ) : null}
 
         {has(data.education) ? (
-          <Card title="学历分布" subtitle="学历是营销文案语气与权益设计的参考维度">
+          <Card title="学历分布" >
             <Chart
               height={260}
               option={{
@@ -84,12 +84,12 @@ export default function Overview() {
                   },
                 ],
               }}
-            />
+ />
           </Card>
         ) : null}
 
         {has(data.gender) ? (
-          <Card title="性别结构" subtitle="用于选择文案人设与商品主图">
+          <Card title="性别结构" >
             <Chart
               height={260}
               option={{
@@ -105,12 +105,12 @@ export default function Overview() {
                   },
                 ],
               }}
-            />
+ />
           </Card>
         ) : null}
 
         {has(data.marital) ? (
-          <Card title="婚姻状况" subtitle="家庭阶段会影响品类偏好与购买频次">
+          <Card title="婚姻状况" >
             <Chart
               height={260}
               option={{
@@ -126,7 +126,7 @@ export default function Overview() {
                   },
                 ],
               }}
-            />
+ />
           </Card>
         ) : null}
       </div>
@@ -134,7 +134,7 @@ export default function Overview() {
       {has(data.category) || has(data.channel) ? (
         <div className="grid grid-2">
           {has(data.category) ? (
-            <Card title="品类消费结构" subtitle="各品类贡献的销售额，决定主推商品">
+            <Card title="品类消费结构" >
               <Chart
                 height={260}
                 option={{
@@ -159,12 +159,12 @@ export default function Overview() {
                     },
                   ],
                 }}
-              />
+ />
             </Card>
           ) : null}
 
           {has(data.channel) ? (
-            <Card title="购买渠道构成" subtitle="客户习惯在哪个渠道成交，决定活动投在哪里">
+            <Card title="购买渠道构成" >
               <Chart
                 height={260}
                 option={{
@@ -180,7 +180,7 @@ export default function Overview() {
                     },
                   ],
                 }}
-              />
+ />
             </Card>
           ) : null}
         </div>
@@ -188,7 +188,7 @@ export default function Overview() {
 
       <div className="grid grid-2">
         {has(data.response_by_age) ? (
-          <Card title="各年龄段活动响应率" subtitle="哪个人群对营销活动更敏感">
+          <Card title="各年龄段活动响应率" >
             <Chart
               height={250}
               option={{
@@ -208,12 +208,12 @@ export default function Overview() {
                   },
                 ],
               }}
-            />
+ />
           </Card>
         ) : null}
 
         {has(data.spend_hist) ? (
-          <Card title="消费额分布" subtitle="看长尾有多长，头部客户撑起多少营收">
+          <Card title="消费额分布" >
             <Chart
               height={270}
               option={{
@@ -235,13 +235,13 @@ export default function Overview() {
                   },
                 ],
               }}
-            />
+ />
           </Card>
         ) : null}
       </div>
 
       {showCorr ? (
-        <Card title="核心指标相关性" subtitle="哪些指标同涨同跌，哪些此消彼长">
+        <Card title="核心指标相关性" >
           <Chart
             height={430}
             option={{
@@ -271,14 +271,7 @@ export default function Overview() {
                 },
               ],
             }}
-          />
-          <p style={{ margin: '10px 4px 0', fontSize: 12, lineHeight: 1.7, color: '#6b7280' }}>
-            读图方法：每一格是「行指标」和「列指标」的相关系数，取值 -1 到 +1。
-            <b> 蓝色越深越接近 +1</b>（两个指标同涨同跌）；
-            <b> 红色越深越接近 -1</b>（一个涨另一个跌）；
-            接近白色（±0.1 以内）说明两者几乎没有线性关系。对角线恒为 1（自己和自己的相关）。
-            完整术语解释见仓库 docs/GLOSSARY.md。
-          </p>
+ />
         </Card>
       ) : null}
     </>

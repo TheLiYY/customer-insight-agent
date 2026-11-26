@@ -58,7 +58,7 @@ export default function Campaign({ onNavigate }) {
   return (
     <>
       <div className="grid grid-side">
-        <Card title="方案参数" subtitle="选一群人 + 一个预算，系统自动给出选品/渠道/话术/ROI">
+        <Card title="方案参数" >
           <div className="field">
             <label>分层方式</label>
             <div className="radio-row">
@@ -113,7 +113,7 @@ export default function Campaign({ onNavigate }) {
         <div>
           {error && <ErrorBox error={error} />}
           {!plan && (
-            <Card title="等待生成" subtitle="左侧设置参数后点击「生成营销方案」">
+            <Card title="等待生成" >
               <p className="muted" style={{ lineHeight: 2 }}>
                 一个可执行的营销方案至少要说清楚五件事：<strong>推给谁</strong>（人群）、<strong>推什么</strong>（选品）、
                 <strong>从哪推</strong>（渠道）、<strong>什么时候推</strong>（时机）、<strong>说什么</strong>（话术），
@@ -136,7 +136,7 @@ export default function Campaign({ onNavigate }) {
                 <Kpi label="优先级" value={plan.priority} tone="rose" hint={plan.goal} />
               </div>
 
-              <Card title="执行卡" subtitle={`${plan.segment} · ${plan.segment_size} 人`}>
+              <Card title="执行卡" >
                 <div className="stat-grid">
                   <div className="stat">
                     <span>营销目标</span>
@@ -178,7 +178,7 @@ export default function Campaign({ onNavigate }) {
 
               <div className="grid grid-2">
                 {plan.products.length ? (
-                  <Card title="选品结构" subtitle="按该人群的人均消费额排序">
+                  <Card title="选品结构" >
                     <Chart
                       height={240}
                       option={{
@@ -198,12 +198,12 @@ export default function Campaign({ onNavigate }) {
                           },
                         ],
                       }}
-                    />
+ />
                   </Card>
                 ) : null}
 
                 {plan.channel_mix.length ? (
-                  <Card title="渠道配比" subtitle="该人群历史下单渠道占比，优先主渠道投放">
+                  <Card title="渠道配比" >
                     <Chart
                       height={240}
                       option={{
@@ -223,12 +223,12 @@ export default function Campaign({ onNavigate }) {
                           },
                         ],
                       }}
-                    />
+ />
                   </Card>
                 ) : null}
               </div>
 
-              <Card title="圈定名单（前 10 位）" subtitle={`按响应概率排序，共 ${plan.selected} 人进入触达池`} extra={
+              <Card title="圈定名单（前 10 位）"  extra={
                 <button type="button" className="btn" onClick={() => onNavigate('agent')}>
                   去 Agent 里继续问
                 </button>
@@ -243,7 +243,7 @@ export default function Campaign({ onNavigate }) {
                     { key: 'recency', title: '最近购买', align: 'right', render: (r) => `${num(r.recency)} 天前` },
                   ]}
                   rows={plan.audience_preview}
-                />
+ />
               </Card>
             </>
           )}

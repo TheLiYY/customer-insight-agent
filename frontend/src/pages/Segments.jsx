@@ -55,12 +55,12 @@ export default function Segments() {
         <Kpi label="模型口径" value="5 分位" hint="R/F/M 各自等频打分 1-5" />
       </div>
 
-      <Card title="RFM 分层结果" subtitle="R=最近一次购买、F=购买频次、M=消费金额，三者都按等频打 1-5 分，再组合成 8 个业务分层">
+      <Card title="RFM 分层结果" >
         <Table columns={columns} rows={segs} rowKey="name" />
       </Card>
 
       <div className="grid grid-2">
-        <Card title="客户结构（面积 = 人数）" subtitle="一眼看清哪一层人最多">
+        <Card title="客户结构（面积 = 人数）" >
           <Chart
             height={300}
             option={{
@@ -80,10 +80,10 @@ export default function Segments() {
                 },
               ],
             }}
-          />
+ />
         </Card>
 
-        <Card title="F（频次）× M（金额）分布" subtitle="高频高消费的右上区域是核心资产，低频低消费的左下区域需要激活或放弃">
+        <Card title="F（频次）× M（金额）分布" >
           <Chart
             height={300}
             option={{
@@ -100,11 +100,11 @@ export default function Segments() {
                 },
               ],
             }}
-          />
+ />
         </Card>
       </div>
 
-      <Card title="每一层该怎么打" subtitle="分层的价值不在于名字，而在于资源配置的差异">
+      <Card title="每一层该怎么打" >
         <div className="table-wrap" style={{ maxHeight: 'none' }}>
           <table>
             <thead>

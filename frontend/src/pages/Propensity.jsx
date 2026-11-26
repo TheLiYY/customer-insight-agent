@@ -17,7 +17,7 @@ export default function Propensity() {
 
   if (data.available === false) {
     return (
-      <Card title="这份数据暂时跑不了响应预测" subtitle="响应预测需要一个「是否响应过活动」的标签列">
+      <Card title="这份数据暂时跑不了响应预测" >
         <p className="muted">{data.reason}</p>
         <p className="muted small">
           补充方式：在数据里加一列 <code>response</code>（取值为 1/0 或 yes/no）后重新跑
@@ -56,8 +56,8 @@ export default function Propensity() {
       <div className="grid grid-2">
         <Card
           title="提升度曲线：该联系多少人"
-          subtitle={`把客户按预测概率从高到低排，最靠前那批人的真实响应率是平均水平的 ${num(best.lift, 2)} 倍`}
-        >
+          
+ >
           <Chart
             height={300}
             option={{
@@ -89,10 +89,10 @@ export default function Propensity() {
                 },
               ],
             }}
-          />
+ />
         </Card>
 
-        <Card title="什么因素驱动客户响应" subtitle="逻辑回归系数（已标准化），正数表示该特征越大越容易响应">
+        <Card title="什么因素驱动客户响应" >
           <Chart
             height={300}
             option={{
@@ -119,14 +119,14 @@ export default function Propensity() {
                 },
               ],
             }}
-          />
+ />
         </Card>
       </div>
 
       <Card
         title="验证集混淆矩阵"
-        subtitle={`基准响应率 ${pct(data.base_rate)}。样本不均衡（只有 ${pct(data.base_rate)} 的人会响应），所以模型用类别加权训练，并单独调阈值。`}
-      >
+        
+ >
         <div className="stat-grid">
           <div className="stat">
             <span>真正例 TP</span>
@@ -151,11 +151,11 @@ export default function Propensity() {
         </p>
       </Card>
 
-      <Card title="最可能响应的 Top 50 客户" subtitle="下一轮活动优先触达这批人，预期响应率远高于平均">
+      <Card title="最可能响应的 Top 50 客户" >
         <Table columns={columns} rows={data.top_customers} rowKey="customer_id" />
       </Card>
 
-      <Card title="正向驱动因素小结" subtitle="给业务同学看的解释版">
+      <Card title="正向驱动因素小结" >
         <ul className="bullets">
           {positive.map((c) => (
             <li key={c.key}>

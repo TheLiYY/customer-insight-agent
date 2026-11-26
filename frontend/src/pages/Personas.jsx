@@ -36,7 +36,7 @@ export default function Personas() {
       </div>
 
       <div className="grid grid-side">
-        <Card title="客户分群" subtitle="点击切换查看画像详情">
+        <Card title="客户分群" >
           <div className="seg-list">
             {data.personas.map((item, i) => (
               <button
@@ -44,7 +44,7 @@ export default function Personas() {
                 type="button"
                 className={`seg-item ${i === active ? 'active' : ''}`}
                 onClick={() => setActive(i)}
-              >
+ >
                 <div className="seg-name">
                   <span>{item.name}</span>
                   <span className={item.status === '活跃' ? 'dot-live' : 'dot-warn'}>{item.status}</span>
@@ -60,9 +60,9 @@ export default function Personas() {
         <div>
           <Card
             title={`${p.name} · 画像详情`}
-            subtitle={p.headline}
+            
             extra={<Tag color="#3b6cf6">{`营收占比 ${pct(p.revenue_ratio)}`}</Tag>}
-          >
+ >
             <div className="persona-head">
               <div>
                 <div className="headline">{p.summary.split('，')[0]}…</div>
@@ -112,7 +112,7 @@ export default function Personas() {
           </Card>
 
           <div className="grid grid-2">
-            <Card title="品类偏好" subtitle="人均消费额（元），反映这一群人买什么">
+            <Card title="品类偏好" >
               <Chart
                 height={250}
                 option={{
@@ -131,10 +131,10 @@ export default function Personas() {
                     },
                   ],
                 }}
-              />
+ />
             </Card>
 
-            <Card title="渠道结构" subtitle="该群体在各渠道的下单占比">
+            <Card title="渠道结构" >
               <Chart
                 height={250}
                 option={{
@@ -154,11 +154,11 @@ export default function Personas() {
                     },
                   ],
                 }}
-              />
+ />
             </Card>
           </div>
 
-          <Card title="人群构成明细" subtitle="学历 / 婚姻状况 / 年龄段分布">
+          <Card title="人群构成明细" >
             <div className="grid grid-3">
               {[
                 ['年龄段', demo.age_group],
@@ -184,7 +184,7 @@ export default function Personas() {
       </div>
 
       {elbow && (
-        <Card title="K 值选择：肘部法则 + 轮廓系数" subtitle="K 变大时组内误差必然下降，因此参考轮廓系数选 K=4 作为可解释性与区分度的折中">
+        <Card title="K 值选择：肘部法则 + 轮廓系数" >
           <Chart
             height={280}
             option={{
@@ -216,7 +216,7 @@ export default function Personas() {
                 },
               ],
             }}
-          />
+ />
         </Card>
       )}
     </>

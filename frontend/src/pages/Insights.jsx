@@ -67,7 +67,7 @@ export default function Insights({ onNavigate }) {
             type="button"
             className={`tab ${filter === f.key ? 'active' : ''}`}
             onClick={() => setFilter(f.key)}
-          >
+ >
             {f.label}
           </button>
         ))}
@@ -93,7 +93,7 @@ export default function Insights({ onNavigate }) {
         </Card>
       ))}
 
-      <Card title="行动清单" subtitle="按优先级排好，从上往下执行即可">
+      <Card title="行动清单" >
         <Table
           columns={[
             { key: 'priority', title: '优先级', width: 80, align: 'center' },
@@ -101,7 +101,7 @@ export default function Insights({ onNavigate }) {
             { key: 'from', title: '来自哪条结论', width: 200 },
           ]}
           rows={data.actions}
-        />
+ />
         {onNavigate && (
           <button type="button" className="link-btn" style={{ marginTop: 12 }} onClick={() => onNavigate('campaign')}>
             去生成对应客群的营销方案 →

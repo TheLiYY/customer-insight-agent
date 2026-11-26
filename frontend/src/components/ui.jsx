@@ -1,13 +1,12 @@
 import { PALETTE } from '../lib/format'
 
-export function Card({ title, subtitle, extra, children, className = '', style }) {
+export function Card({ title, extra, children, className = '', style }) {
   return (
     <section className={`card ${className}`} style={style}>
       {(title || extra) && (
         <header className="card-head">
           <div>
             {title && <h3>{title}</h3>}
-            {subtitle && <p className="muted small">{subtitle}</p>}
           </div>
           {extra}
         </header>

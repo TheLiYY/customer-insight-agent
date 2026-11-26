@@ -44,7 +44,7 @@ export default function Data() {
         <Kpi label="数据粒度" value={contract.grain_label || '客户级宽表'} hint="决定后续怎么聚合" tone="accent" />
       </div>
 
-      <Card title="当前使用的数据" subtitle={data.name || '未命名数据集'}>
+      <Card title="当前使用的数据" >
         <p style={{ marginTop: 0, lineHeight: 1.9 }}>{data.desc}</p>
         <ul className="bullets">
           <li>
@@ -62,7 +62,7 @@ export default function Data() {
         </ul>
       </Card>
 
-      <Card title="能力开关" subtitle="不是每份数据都有全部字段，这里有就自动启用，没有就优雅降级">
+      <Card title="能力开关" >
         <div className="tag-row">
           {CAP_LABELS.map(([key, label]) => (
             <Tag key={key} color={caps[key] ? '#0f9d58' : '#8c8f9a'}>
@@ -79,8 +79,8 @@ export default function Data() {
 
       <Card
         title="字段自动映射"
-        subtitle="系统不认识你的列名也没关系：它按别名表把源表字段自动对上标准字段，下面是本次的匹配结果"
-      >
+        
+ >
         <Table
           rowKey="key"
           columns={[
@@ -90,12 +90,12 @@ export default function Data() {
             { key: 'how', title: '处理方式' },
           ]}
           rows={mappingRows}
-        />
+ />
       </Card>
 
       {catRows.length || chRows.length ? (
         <div className="grid grid-2">
-          <Card title="识别到的品类" subtitle="参与品类结构、关联规则、营销选品">
+          <Card title="识别到的品类" >
             <Table
               rowKey="key"
               columns={[
@@ -103,9 +103,9 @@ export default function Data() {
                 { key: 'label', title: '品类名' },
               ]}
               rows={catRows}
-            />
+ />
           </Card>
-          <Card title="识别到的渠道" subtitle="参与渠道结构与触达渠道推荐">
+          <Card title="识别到的渠道" >
             <Table
               rowKey="key"
               columns={[
@@ -113,12 +113,12 @@ export default function Data() {
                 { key: 'label', title: '渠道名' },
               ]}
               rows={chRows}
-            />
+ />
           </Card>
         </div>
       ) : null}
 
-      <Card title="字段字典" subtitle={`共 ${data.columns} 个字段，前端图表与后端分析都用这套口径`}>
+      <Card title="字段字典" >
         <Table
           rowKey="name"
           columns={[
@@ -128,10 +128,10 @@ export default function Data() {
             { key: 'desc', title: '说明' },
           ]}
           rows={data.fields}
-        />
+ />
       </Card>
 
-      <Card title="数据处理流程" subtitle="scripts/prepare_data.py 一条命令完成「读取 → 识别 → 标准化 → 落盘」">
+      <Card title="数据处理流程" >
         <ol className="bullets" style={{ paddingLeft: 20 }}>
           <li><strong>读取</strong>：支持内置数据集、任意 CSV/Excel 文件，也支持直接指向你公司导出的客户表。</li>
           <li><strong>识别</strong>：按别名表自动判断哪列是客户编号、金额、频次、最近购买时间（见上表）。</li>
@@ -142,13 +142,13 @@ export default function Data() {
       </Card>
 
       {contract.mapping && contract.mapping.unused_columns && contract.mapping.unused_columns.length ? (
-        <Card title="没有用上的列" subtitle="这些列没有被自动识别为标准字段，也不会进入分析">
+        <Card title="没有用上的列" >
           <p className="code-inline" style={{ lineHeight: 2 }}>{contract.mapping.unused_columns.join('、')}</p>
         </Card>
       ) : null}
 
       {data.warnings && data.warnings.length ? (
-        <Card title="本次预处理给出的提醒" subtitle="不影响跑通，但会影响结论的可信度，建议读一遍">
+        <Card title="本次预处理给出的提醒" >
           <ul className="bullets">
             {data.warnings.map((w) => (
               <li key={w}>{w}</li>
@@ -157,7 +157,7 @@ export default function Data() {
         </Card>
       ) : null}
 
-      <Card title="口径说明与局限" subtitle="把话说在前面，比过度承诺更专业">
+      <Card title="口径说明与局限" >
         <ul className="bullets">
           <li>
             <strong>样本量</strong>：当前 {num(data.rows)} 条客户记录，足够跑通全流程和演示模型；正式业务请换成自己的全量客户表。
@@ -170,6 +170,9 @@ export default function Data() {
           </li>
           <li>
             <strong>隐私</strong>：公开数据集已脱敏；换成公司数据时，客户编号等身份信息建议先做哈希或替换。
+          </li>
+          <li>
+            <strong>图表怎么看</strong>：每张图在说什么、怎么读、能得出什么结论，见仓库 <code>docs/CHART_GUIDE.md</code>。
           </li>
         </ul>
       </Card>

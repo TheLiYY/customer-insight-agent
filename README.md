@@ -109,6 +109,7 @@ customer-insight-agent/
 │   ├── PROJECT_GUIDE.md           # 项目讲解稿（架构、算法、演示、答辩问答）
 │   ├── CODE_TOUR.md               # ★ 代码导读（逐文件讲清"为什么这么写"）
 │   ├── GLOSSARY.md                # ★ 术语词典（热力图怎么读、AUC/Lift 是什么）
+│   ├── CHART_GUIDE.md             # ★ 图表说明（每张图在说什么、怎么看、能得出什么结论）
 │   ├── DATA.md                    # ★ 换数据指南（别名表、映射置信度、能力降级）
 │   ├── API.md                     # 接口字段说明
 │   ├── openapi.json               # OpenAPI 3.1（Apifox / Swagger 可导入）
@@ -459,6 +460,7 @@ python scripts/export_openapi.py       # 导出 OpenAPI / Postman 给 Apifox
 | 文档 | 给谁看 | 解决什么问题 |
 | --- | --- | --- |
 | [`docs/GLOSSARY.md`](docs/GLOSSARY.md) | 你自己 / 答辩听众 | AUC、Lift、轮廓系数、热力图、置信度……**每个术语都配本项目真实数字和"怎么讲"话术** |
+| [`docs/CHART_GUIDE.md`](docs/CHART_GUIDE.md) | 看页面的人 / 讲页面的人 | **每张图在说什么、怎么读、当前数据看到什么、能下什么结论**（页面上的小字解释已全部收进这里） |
 | [`docs/CODE_TOUR.md`](docs/CODE_TOUR.md) | 你自己 / 面试官 | 逐个文件讲清职责、执行链路、为什么这么设计；含二次开发手册 |
 | [`docs/PROJECT_GUIDE.md`](docs/PROJECT_GUIDE.md) | 汇报现场 | 30 秒 / 3 分钟 / 8 分钟三套讲稿 + 14 个高频追问 |
 | [`docs/API.md`](docs/API.md) | 前后端联调 | 16 个接口的字段级说明与示例 |
