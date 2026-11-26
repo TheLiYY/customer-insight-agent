@@ -103,6 +103,10 @@
 `Customer_Insight_Report.xlsx` 是**结果报告**（9 个 sheet + 4 张原生图表）。
 模型训练与测试读的是 `customers.csv`（由原始数据清洗而来），两个 Excel 是给业务方核对和交付用的。
 
+**换成自己的 Excel 数据训练**：`python scripts/prepare_data.py --xlsx 客户数据.xlsx`（可选 `--sheet 工作表名`）。
+脚本会把 Excel 转成 `backend/data/raw/ifood_df.csv` 后走完全相同的清洗与建模流程，结果与联网下载一致；
+表头需与 Kaggle 原始列名对齐，缺列会报出具体缺哪几列。
+
 ---
 
 ## 4. 三个核心算法（讲原理 + 讲为什么 + 讲结果）

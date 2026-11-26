@@ -11,6 +11,7 @@
 """
 from __future__ import annotations
 
+import argparse
 import json
 import shutil
 import urllib.request
@@ -116,6 +117,37 @@ def download() -> None:
         raise SystemExit("既无法联网下载，也找不到内置样本文件")
     shutil.copyfile(sample, RAW_CSV)
     print(f"[ok  ] 使用内置样本: {RAW_CSV} ({RAW_CSV.stat().st_size / 1024:.0f} KB)")
+
+
+# build() 会用到的最小列集合（Kaggle 原始 39 列的子集，缺一列就没法训练）
+REQUIRED_COLS = [
+    "Age", "Income", "Kidhome", "Teenhome", "Recency", "Customer_Days",
+    "MntWines", "MntFruits", "MntMeatProducts", "MntFishProducts",
+    "MntSweetProducts", "MntGoldProds", "MntTotal",
+    "NumDealsPurchases", "NumWebPurchases", "NumCatalogPurchases",
+    "NumStorePurchases", "NumWebVisitsMonth", "AcceptedCmpOverall",
+    "Response", "Complain",
+] + list(EDU_COLS) + list(MARITAL_COLS)
+
+
+def load_from_excel(path: Path, sheet: str | int | None = None) -> None:
+    """直接从 Excel 读原始数据训练（用户自己下载的 Kaggle 表格也走这里）。
+
+    需要包含 Kaggle 原始列名（Age/Income/Mnt* /Response ...），
+    读进来后先转成 CSV 缓存，再走同一套清洗流程，保证「Excel 数据」与「联网数据」结果一致。
+    """
+    if not path.exists():
+        raise SystemExit(f"找不到 Excel 文件: {path}")
+    print(f"[xls ] 从 Excel 读取原始数据: {path}")
+    raw = pd.read_excel(path, sheet_name=sheet if sheet is not None else 0, engine="openpyxl")
+    missing = [c for c in REQUIRED_COLS if c not in raw.columns]
+    if missing:
+        raise SystemExit(
+            "Excel 缺少这些列，无法训练：\n  " + ", ".join(missing)
+            + "\n请使用 Kaggle Customer Personality Analysis 的 ifood.csv / marketing_campaign.csv 原始表头。"
+        )
+    raw.to_csv(RAW_CSV, index=False, encoding="utf-8")
+    print(f"[ok  ] 已转存为 {RAW_CSV}  shape={raw.shape}")
 
 
 def pick_label(row: pd.Series, mapping: dict[str, str], default: str) -> str:
@@ -262,7 +294,26 @@ def write_meta(df: pd.DataFrame) -> None:
 
 
 def main() -> None:
-    download()
+    parser = argparse.ArgumentParser(
+        description="下载/读取原始数据，清洗成训练用的 customers.csv 与可读的 Excel"
+    )
+    parser.add_argument(
+        "--xlsx",
+        type=Path,
+        default=None,
+        help="改用本地 Excel 作为原始数据（例如自己在 Kaggle 下载后另存的表格）",
+    )
+    parser.add_argument(
+        "--sheet",
+        default=None,
+        help="配合 --xlsx 指定工作表名或序号（默认第一个工作表）",
+    )
+    args = parser.parse_args()
+
+    if args.xlsx is not None:
+        load_from_excel(args.xlsx, args.sheet)
+    else:
+        download()
     df = build()
     df.to_csv(OUT_CSV, index=False, encoding="utf-8-sig")
     print(f"[ok  ] 写入 {OUT_CSV}  shape={df.shape}")

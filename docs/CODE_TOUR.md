@@ -97,7 +97,7 @@ customer-insight-agent/
 │       ├── components/ui.jsx      # Card / Kpi / Table / Tag / Tabs
 │       └── pages/*.jsx            # 8 个页面
 ├── scripts/
-│   ├── prepare_data.py            # 下载 + 清洗 + 生成 Excel/CSV/meta
+│   ├── prepare_data.py            # 下载(或 --xlsx 读本地 Excel) + 清洗 + 生成 Excel/CSV/meta
 │   ├── export_report.py           # 生成分析报告 Excel（9 个 sheet）
 │   ├── export_openapi.py          # 导出 OpenAPI / Postman 给 Apifox 用
 │   └── serve_frontend.py          # 无 Node 时的静态站点 + /api 反代
@@ -487,7 +487,7 @@ backend/data/processed/Customer_Insight_Report.xlsx  （9 个 sheet + 4 张原�
 
 | 想做什么 | 改哪里 | 注意 |
 | --- | --- | --- |
-| 换数据集 | `scripts/prepare_data.py` 的 `download()`/`build()`，同时改 `FIELD_DICT` | 新数据要有 `response` 标签才能跑响应预测 |
+| 换数据集 | `scripts/prepare_data.py` 的 `download()` / `load_from_excel()` / `build()`，同时改 `FIELD_DICT` | 新数据要有 `response` 标签才能跑响应预测；本地表格直接 `--xlsx 文件.xlsx` |
 | 改客群数量 | `config.py` 的 `Settings.cluster_k` | 名字池只有 6 个，k>6 会自动补编号 |
 | 加画像标签 | `persona.py::_tags()` | 用分位数做阈值，别写死绝对值 |
 | 加自动结论 | `insights.py::build_insights()` 里加一个 `add(...)` | 前端自动渲染，无需改前端 |

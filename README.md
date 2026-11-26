@@ -187,6 +187,17 @@ python scripts/export_openapi.py     # 生成 docs/openapi.json + docs/API.postm
 > 两个 Excel 只是"可交付的落地形式"；模型训练与测试读的是 `customers.csv`，
 > 由 `prepare_data.py` 从 2205 行原始数据清洗而来（去重 184 行、剔除收入缺失 154 行）。
 
+**想完全用自己手上的 Excel 训练？** 直接把 Kaggle 原始表（或同表头的公司数据）另存为 `.xlsx`，然后：
+
+```bash
+python scripts/prepare_data.py --xlsx "D:/你的数据/客户数据.xlsx"
+# 指定工作表：python scripts/prepare_data.py --xlsx 客户数据.xlsx --sheet 客户明细
+```
+
+脚本会把 Excel 转存成 `backend/data/raw/ifood_df.csv`，再走**同一套清洗 + 建模流程**，
+所以「Excel 数据」和「联网下载的数据」跑出来的结果完全一致（已验证 SHA256 相同）。
+表头必须是 Kaggle 原始列名（`Age`/`Income`/`Mnt*`/`Response`…），缺列会直接提示缺哪几列。
+
 ### 5.3 清洗规则（`scripts/prepare_data.py`）
 
 | 处理 | 规则 |
