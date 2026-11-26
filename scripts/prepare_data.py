@@ -26,7 +26,14 @@ PROCESSED = ROOT / "backend" / "data" / "processed"
 RAW.mkdir(parents=True, exist_ok=True)
 PROCESSED.mkdir(parents=True, exist_ok=True)
 
-SOURCE_URL = "https://raw.githubusercontent.com/nailson/ifood-data-business-analyst-test/master/ifood_df.csv"
+SOURCE_URL = "https://cdn.jsdelivr.net/gh/nailson/ifood-data-business-analyst-test@master/ifood_df.csv"
+# 国内网络下 raw.githubusercontent.com 常被墙，jsDelivr 的 GitHub CDN 一般可用，
+# 所以按顺序尝试多个镜像，全失败才回退仓库内置样本。
+MIRRORS = [
+    SOURCE_URL,
+    "https://raw.githubusercontent.com/nailson/ifood-data-business-analyst-test/master/ifood_df.csv",
+    "https://gcore.jsdelivr.net/gh/nailson/ifood-data-business-analyst-test@master/ifood_df.csv",
+]
 RAW_CSV = RAW / "ifood_df.csv"
 EXCEL = RAW / "Customer_Personality_Analysis.xlsx"
 OUT_CSV = PROCESSED / "customers.csv"
@@ -87,20 +94,28 @@ def download() -> None:
     if RAW_CSV.exists() and RAW_CSV.stat().st_size > 50_000:
         print(f"[skip] 原始数据已存在: {RAW_CSV}")
         return
-    print(f"[get ] {SOURCE_URL}")
-    try:
-        req = urllib.request.Request(SOURCE_URL, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=90) as resp:
-            data = resp.read()
+    for url in MIRRORS:
+        print(f"[get ] {url}")
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=90) as resp:
+                data = resp.read()
+        except Exception as exc:  # noqa: BLE001 - 换下一个镜像
+            print(f"[warn] {type(exc).__name__}: {exc}")
+            continue
+        if len(data) < 50_000 or b"Response" not in data[:4096]:
+            print("[warn] 返回内容不像目标数据集，换下一个镜像")
+            continue
         RAW_CSV.write_bytes(data)
         print(f"[ok  ] 下载完整数据集: {RAW_CSV} ({len(data) / 1024:.0f} KB)")
-    except Exception as exc:  # noqa: BLE001 - 离线环境回退到内置样本
-        sample = RAW / "ifood_df_sample.csv"
-        print(f"[warn] 下载失败({type(exc).__name__}: {exc})，回退内置样本 {sample.name}")
-        if not sample.exists():
-            raise SystemExit("既无法联网下载，也找不到内置样本文件") from exc
-        shutil.copyfile(sample, RAW_CSV)
-        print(f"[ok  ] 使用内置样本: {RAW_CSV} ({RAW_CSV.stat().st_size / 1024:.0f} KB)")
+        return
+
+    sample = RAW / "ifood_df_sample.csv"
+    print(f"[warn] 所有镜像均不可用，回退内置样本 {sample.name}")
+    if not sample.exists():
+        raise SystemExit("既无法联网下载，也找不到内置样本文件")
+    shutil.copyfile(sample, RAW_CSV)
+    print(f"[ok  ] 使用内置样本: {RAW_CSV} ({RAW_CSV.stat().st_size / 1024:.0f} KB)")
 
 
 def pick_label(row: pd.Series, mapping: dict[str, str], default: str) -> str:

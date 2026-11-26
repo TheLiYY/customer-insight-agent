@@ -1,17 +1,32 @@
-"""KMeans 聚类（纯 numpy 实现，不依赖 scikit-learn）。
+"""KMeans 客群聚类（基于 scikit-learn）。
 
-为什么自己写：
-1. 部署轻量，只要 numpy 就能跑；
-2. 每一步都能讲清楚——初始化、分配、更新中心、收敛判断。
+关键设计：
+1. 先用 StandardScaler 标准化——收入是几万、频次是十几，不标准化的话距离会被收入完全主导；
+2. KMeans(n_init=10) 内置 k-means++ 多次初始化，取簇内平方和最小的一次；
+3. 用轮廓系数（silhouette）评估「簇内紧、簇间远」，取值 -1~1，越大越好；
+4. 聚类编号本身没有业务含义，这里按「综合价值得分」重新排序命名，
+   保证每次跑出来的「核心高价值客群」都还是最值钱的那一群。
 """
 from __future__ import annotations
 
+import warnings
 from typing import Any
 
 import numpy as np
 import pandas as pd
+from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score as sk_silhouette
+from sklearn.preprocessing import StandardScaler
 
 from .utils import clean
+
+# Windows + MKL 下 sklearn 会对 KMeans 抛一条与结果无关的「内存泄漏」提示，
+# 我们的数据只有一两千行、跑几百毫秒，这条警告纯属噪音，直接屏蔽。
+warnings.filterwarnings(
+    "ignore",
+    message="KMeans is known to have a memory leak on Windows with MKL",
+    category=UserWarning,
+)
 
 # 按综合得分排名给出的客群名称（k 大于 6 时自动补编号）
 NAME_POOL = [
@@ -24,81 +39,18 @@ NAME_POOL = [
 ]
 
 
-def _standardize(x: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    mean = x.mean(axis=0)
-    std = x.std(axis=0)
-    std[std == 0] = 1.0
-    return (x - mean) / std, mean, std
-
-
-def _kmeans_plus_plus(x: np.ndarray, k: int, rng: np.random.Generator) -> np.ndarray:
-    """k-means++ 初始化：让初始中心彼此尽量远，降低陷入局部最优的概率。"""
-    n = x.shape[0]
-    centers = [x[rng.integers(n)]]
-    for _ in range(1, k):
-        d2 = np.min(
-            ((x[:, None, :] - np.array(centers)[None, :, :]) ** 2).sum(axis=2), axis=1
-        )
-        prob = d2 / d2.sum() if d2.sum() > 0 else np.ones(n) / n
-        centers.append(x[rng.choice(n, p=prob)])
-    return np.array(centers)
-
-
-def _assign(x: np.ndarray, centers: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """返回 (每个样本最近的簇编号, 每个样本到最近中心的平方距离)。"""
-    d2 = (
-        (x**2).sum(axis=1)[:, None] - 2 * x @ centers.T + (centers**2).sum(axis=1)[None, :]
-    )
-    labels = d2.argmin(axis=1)
-    return labels, d2[np.arange(len(x)), labels]
-
-
-def kmeans(x: np.ndarray, k: int, n_init: int = 10, max_iter: int = 300, seed: int = 42):
-    """标准 KMeans：多次随机初始化，取簇内平方和最小的一次。"""
-    best: tuple[float, np.ndarray, np.ndarray] | None = None
-    for i in range(n_init):
-        rng = np.random.default_rng(seed + i)
-        centers = _kmeans_plus_plus(x, k, rng)
-        labels = np.zeros(len(x), dtype=int)
-        for _ in range(max_iter):
-            labels, _ = _assign(x, centers)
-            new_centers = np.array(
-                [
-                    x[labels == j].mean(axis=0) if np.any(labels == j) else centers[j]
-                    for j in range(k)
-                ]
-            )
-            if np.allclose(new_centers, centers):
-                centers = new_centers
-                break
-            centers = new_centers
-        labels, dist = _assign(x, centers)
-        inertia = float(dist.sum())
-        if best is None or inertia < best[0]:
-            best = (inertia, centers, labels)
-    assert best is not None
-    return best[1], best[2], best[0]
-
-
-def silhouette_score(x: np.ndarray, labels: np.ndarray) -> float:
-    """轮廓系数：衡量「簇内紧、簇间远」，取值 -1..1，越大越好。"""
-    n = len(x)
-    unique = np.unique(labels)
-    if len(unique) < 2 or len(unique) >= n:
-        return 0.0
-    dist = np.sqrt(((x[:, None, :] - x[None, :, :]) ** 2).sum(axis=2))
-    score = 0.0
-    for i in range(n):
-        same = labels == labels[i]
-        same[i] = False
-        if same.sum() == 0:
-            continue
-        a = dist[i, same].mean()
-        b = min(
-            dist[i, labels == other].mean() for other in unique if other != labels[i]
-        )
-        score += (b - a) / max(a, b) if max(a, b) > 0 else 0.0
-    return float(score / n)
+def fit_kmeans(
+    matrix: np.ndarray, k: int, seed: int = 42, n_init: int = 10
+) -> tuple[KMeans, StandardScaler, np.ndarray, float]:
+    """标准化 → 拟合 KMeans，返回 (模型, 标准化器, 标准化后的矩阵, 轮廓系数)。"""
+    scaler = StandardScaler()
+    scaled = scaler.fit_transform(matrix)
+    model = KMeans(n_clusters=k, n_init=n_init, random_state=seed)
+    labels = model.fit_predict(scaled)
+    # 大样本下轮廓系数是 O(n²)，抽样计算即可，结果稳定且快
+    sample = min(len(scaled), 1500)
+    sil = float(sk_silhouette(scaled, labels, sample_size=sample, random_state=seed))
+    return model, scaler, scaled, sil
 
 
 def run_clustering(
@@ -107,12 +59,11 @@ def run_clustering(
     """对给定特征做 KMeans，并把人话讲得通的客群名、状态、规模算出来。"""
     k = max(2, min(k, len(df) // 20 or 2))
     matrix = df[features].to_numpy(dtype=float)
-    scaled, mean, std = _standardize(matrix)
-    centers, labels, inertia = kmeans(scaled, k=k, seed=seed)
-    sil = silhouette_score(scaled, labels)
+    model, scaler, scaled, sil = fit_kmeans(matrix, k=k, seed=seed)
+    labels = model.labels_
 
     work = df.copy()
-    work["cluster"] = labels
+    work["cluster"] = labels.astype(int)
 
     # 簇级画像统计
     stats = (
@@ -134,7 +85,9 @@ def run_clustering(
         v = stats[col]
         return (v - v.mean()) / (v.std() or 1)
 
-    stats["score"] = (0.5 * z("avg_spend") + 0.3 * z("avg_freq") - 0.2 * z("avg_recency")).round(4)
+    stats["score"] = (
+        0.5 * z("avg_spend") + 0.3 * z("avg_freq") - 0.2 * z("avg_recency")
+    ).round(4)
     stats = stats.sort_values("score", ascending=False).reset_index(drop=True)
 
     naming = {}
@@ -166,32 +119,36 @@ def run_clustering(
 
     work["cluster_name"] = work["cluster"].map(naming)
 
+    # 把标准化中心还原成原始量纲，便于解释「这个簇典型客户长什么样」
+    centers_raw = scaler.inverse_transform(model.cluster_centers_)
+
     return {
         "labels": work["cluster_name"],
         "table": work,
         "k": k,
-        "inertia": clean(inertia),
+        "inertia": clean(model.inertia_),
         "silhouette": clean(sil),
         "features": features,
-        "centers_raw": clean(np.round(centers * std + mean, 3).tolist()),
+        "centers_raw": clean(np.round(centers_raw, 3).tolist()),
         "clusters": clusters,
     }
 
 
-def elbow_curve(df: pd.DataFrame, features: list[str], ks: list[int], seed: int = 42) -> list[dict]:
+def elbow_curve(
+    df: pd.DataFrame, features: list[str], ks: list[int], seed: int = 42
+) -> list[dict]:
     """肘部法则数据：k 越大惯性越小，找「下降明显变缓」的拐点。"""
     matrix = df[features].to_numpy(dtype=float)
-    scaled, _, _ = _standardize(matrix)
     points = []
     for k in ks:
         if k < 2 or k >= len(df) // 10:
             continue
-        _, labels, inertia = kmeans(scaled, k=k, seed=seed)
+        model, _, _, sil = fit_kmeans(matrix, k=k, seed=seed)
         points.append(
             {
                 "k": k,
-                "inertia": clean(inertia),
-                "silhouette": clean(silhouette_score(scaled, labels)),
+                "inertia": clean(model.inertia_),
+                "silhouette": clean(sil),
             }
         )
     return points

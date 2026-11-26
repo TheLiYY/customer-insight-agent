@@ -12,7 +12,7 @@ from typing import Any
 import pandas as pd
 
 from .config import CLUSTER_FEATURES, settings
-from . import association, campaign, clustering, dataset, overview, persona, propensity, rfm
+from . import association, campaign, clustering, dataset, insights, overview, persona, propensity, rfm
 
 
 class Store:
@@ -27,6 +27,7 @@ class Store:
         self._rules: list[dict] | None = None
         self._overview: dict[str, Any] | None = None
         self._penetration: list[dict] | None = None
+        self._insights: dict[str, Any] | None = None
 
     # ---------- 基础数据 ----------
     @property
@@ -100,6 +101,21 @@ class Store:
             self._overview = overview.build_overview(self.df)
         return self._overview
 
+    # ---------- 自动结论 ----------
+    @property
+    def insights(self) -> dict[str, Any]:
+        if self._insights is None:
+            self._insights = insights.build_insights(
+                self.df,
+                self.overview["kpis"],
+                self.segment_summary,
+                self.personas,
+                self.propensity,
+                self.rules,
+                self.penetration,
+            )
+        return self._insights
+
     # ---------- 组合视图 ----------
     @property
     def enriched(self) -> pd.DataFrame:
@@ -156,6 +172,7 @@ class Store:
             self._rules = None
             self._overview = None
             self._penetration = None
+            self._insights = None
 
 
 store = Store()

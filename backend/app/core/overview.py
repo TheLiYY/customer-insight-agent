@@ -6,7 +6,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from .config import CATEGORY_FIELDS, CHANNEL_FIELDS
+from .config import CATEGORY_FIELDS, CHANNEL_FIELDS, zh_education, zh_marital
 from .utils import clean, pct
 
 CORR_FIELDS = {
@@ -52,20 +52,11 @@ def age_distribution(df: pd.DataFrame) -> list[dict]:
 
 
 def education_distribution(df: pd.DataFrame) -> list[dict]:
-    return _counts(df["education"])
+    return _counts(df["education"].map(zh_education))
 
 
 def marital_distribution(df: pd.DataFrame) -> list[dict]:
-    label = {
-        "Single": "单身",
-        "Married": "已婚",
-        "Together": "同居",
-        "Divorced": "离异",
-        "Widow": "丧偶",
-    }
-    vc = df["marital_status"].map(lambda x: label.get(x, x)).value_counts()
-    total = float(vc.sum()) or 1.0
-    return [{"name": str(k), "value": int(v), "ratio": pct(v, total)} for k, v in vc.items()]
+    return _counts(df["marital_status"].map(zh_marital))
 
 
 def income_buckets(df: pd.DataFrame, bins: int = 6) -> list[dict]:
@@ -107,14 +98,14 @@ def channel_mix(df: pd.DataFrame) -> list[dict]:
     return rows
 
 
-def response_by(df: pd.DataFrame, field: str) -> list[dict]:
-    """分组的响应率对比：谁最容易被打动。"""
+def response_by(df: pd.DataFrame, field: str, labeler=None) -> list[dict]:
+    """分组的响应率对比：谁最容易被打动。labeler 用于把英文取值转成中文展示。"""
     grouped = df.groupby(field)["response"].agg(["mean", "count"]).reset_index()
     grouped = grouped[grouped["count"] >= 10]
     grouped = grouped.sort_values("mean", ascending=False)
     return [
         {
-            "name": str(row[field]),
+            "name": labeler(str(row[field])) if labeler else str(row[field]),
             "value": clean(float(row["mean"])),
             "count": int(row["count"]),
         }
@@ -162,7 +153,7 @@ def build_overview(df: pd.DataFrame) -> dict[str, Any]:
         "category": category_spend(df),
         "channel": channel_mix(df),
         "response_by_age": response_by(df, "age_group"),
-        "response_by_education": response_by(df, "education"),
+        "response_by_education": response_by(df, "education", zh_education),
         "spend_hist": histogram(df, "total_spend", 10),
         "recency_hist": histogram(df, "recency", 10),
         "correlation": correlation(df),

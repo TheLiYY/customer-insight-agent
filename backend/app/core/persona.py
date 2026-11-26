@@ -9,7 +9,7 @@ from typing import Any
 
 import pandas as pd
 
-from .config import CATEGORY_FIELDS, CHANNEL_FIELDS
+from .config import CATEGORY_FIELDS, CHANNEL_FIELDS, zh_education, zh_marital
 from .utils import clean, pct, top_share
 
 
@@ -114,8 +114,8 @@ def build_persona(
     tags = _tags(sub, overall)
     headline = " · ".join(tags[:3]) if tags else "待补充标签"
 
-    education = sub["education"].value_counts()
-    marital = sub["marital_status"].value_counts()
+    education = sub["education"].map(zh_education).value_counts()
+    marital = sub["marital_status"].map(zh_marital).value_counts()
     age_group = sub["age_group"].value_counts()
 
     persona = {

@@ -42,6 +42,31 @@ CHANNEL_FIELDS = {
     "num_store": "线下门店",
 }
 
+# 原始数据里学历/婚姻是英文 one-hot 反解出来的，展示层统一转中文（数据层保留原值，便于筛选）
+EDUCATION_LABELS = {
+    "Graduation": "本科",
+    "Master": "硕士",
+    "PhD": "博士",
+    "2n Cycle": "大专",
+    "Basic": "高中及以下",
+}
+
+MARITAL_LABELS = {
+    "Single": "单身",
+    "Married": "已婚",
+    "Together": "同居",
+    "Divorced": "离异",
+    "Widow": "丧偶",
+}
+
+
+def zh_education(value: str) -> str:
+    return EDUCATION_LABELS.get(value, value)
+
+
+def zh_marital(value: str) -> str:
+    return MARITAL_LABELS.get(value, value)
+
 
 @dataclass
 class Settings:

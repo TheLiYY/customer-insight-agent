@@ -1,14 +1,18 @@
-"""品类关联规则（简化版 Apriori）。
+"""品类关联规则（mlxtend 的 Apriori 实现）。
 
 问题：买了葡萄酒的人，有多大比例会顺手买肉类？
-用支持度（一起出现的概率）、置信度（买了 A 之后再买 B 的概率）、提升度（比随机高多少倍）回答。
+用三个指标回答：
+- 支持度 support：A 和 B 一起出现的比例（这个组合多常见）；
+- 置信度 confidence：买了 A 之后又买 B 的比例（规则的可靠程度）；
+- 提升度 lift：置信度 ÷ B 本身的出现比例（>1 说明「买 A」确实提高了「买 B」的概率，不是巧合）。
 """
 from __future__ import annotations
 
-from itertools import combinations
 from typing import Any
 
 import pandas as pd
+from mlxtend.frequent_patterns import apriori, association_rules
+from mlxtend.preprocessing import TransactionEncoder
 
 from .config import CATEGORY_FIELDS
 from .utils import clean, pct
@@ -20,58 +24,74 @@ def build_transactions(df: pd.DataFrame, min_amount: float = 1.0) -> list[set[st
     fields = list(CATEGORY_FIELDS.keys())
     transactions: list[set[str]] = []
     for row in df[fields].to_numpy(dtype=float):
-        basket = {labels[i] for i, v in enumerate(row) if v is not None and v >= min_amount and v > 0}
+        basket = {
+            labels[i]
+            for i, v in enumerate(row)
+            if v is not None and v >= min_amount and v > 0
+        }
         if basket:
             transactions.append(basket)
     return transactions
 
 
-def _support(transactions: list[set[str]], items: tuple[str, ...]) -> float:
-    target = set(items)
-    hit = sum(1 for t in transactions if target.issubset(t))
-    return hit / len(transactions) if transactions else 0.0
+def _encode(transactions: list[set[str]]) -> pd.DataFrame:
+    """把交易列表转成 mlxtend 需要的 0/1 矩阵。"""
+    encoder = TransactionEncoder()
+    matrix = encoder.fit(transactions).transform(transactions)
+    return pd.DataFrame(matrix, columns=encoder.columns_)
 
 
 def mine_rules(
-    df: pd.DataFrame, min_support: float = 0.03, min_confidence: float = 0.15, max_items: int = 2
+    df: pd.DataFrame,
+    min_support: float = 0.03,
+    min_confidence: float = 0.15,
+    max_items: int = 2,
 ) -> list[dict[str, Any]]:
-    """搜索 1~max_items 元的频繁项集，生成「A -> B」规则。"""
+    """用 Apriori 搜频繁项集，再生成「A -> B」规则，按提升度排序。"""
     transactions = build_transactions(df)
-    if not transactions:
+    if len(transactions) < 2:
         return []
-    labels = list(CATEGORY_FIELDS.values())
-    rules: list[dict[str, Any]] = []
-    for size in range(1, max_items + 1):
-        for items in combinations(labels, size):
-            sup = _support(transactions, items)
-            if sup < min_support:
-                continue
-            for i, head in enumerate(items):
-                antecedent = items[i]
-                consequent = tuple(x for x in items if x != antecedent)
-                sup_a = _support(transactions, (antecedent,))
-                sup_c = _support(transactions, consequent)
-                if sup_a == 0 or sup_c == 0:
-                    continue
-                confidence = sup / sup_a
-                lift = confidence / sup_c
-                if confidence < min_confidence:
-                    continue
-                rules.append(
-                    {
-                        "antecedent": antecedent,
-                        "consequent": " + ".join(consequent),
-                        "support": clean(sup),
-                        "confidence": clean(confidence),
-                        "lift": clean(lift),
-                        "count": int(round(sup * len(transactions))),
-                    }
-                )
-    rules.sort(key=lambda r: (-(r["lift"] or 0), -(r["confidence"] or 0)))
-    # 同一组 A->B 可能被重复生成（对称），去重后保留最高分
+
+    basket = _encode(transactions)
+    n = len(transactions)
+
+    freq = apriori(
+        basket,
+        min_support=min_support,
+        use_colnames=True,
+        max_len=max_items,
+    )
+    if freq.empty:
+        return []
+
+    rules = association_rules(freq, metric="confidence", min_threshold=min_confidence)
+    if rules.empty:
+        return []
+
+    # 只保留「单个品类 -> 单个品类」的规则，讲起来最直观
+    rules = rules[
+        rules["consequents"].map(len).eq(1) & rules["antecedents"].map(len).eq(1)
+    ]
+
+    rows: list[dict[str, Any]] = []
+    for _, r in rules.iterrows():
+        antecedent = " + ".join(sorted(r["antecedents"]))
+        consequent = " + ".join(sorted(r["consequents"]))
+        rows.append(
+            {
+                "antecedent": antecedent,
+                "consequent": consequent,
+                "support": clean(float(r["support"])),
+                "confidence": clean(float(r["confidence"])),
+                "lift": clean(float(r["lift"])),
+                "count": int(round(float(r["support"]) * n)),
+            }
+        )
+
+    rows.sort(key=lambda x: (-(x["lift"] or 0), -(x["confidence"] or 0)))
     seen: set[tuple[str, str]] = set()
     deduped = []
-    for r in rules:
+    for r in rows:
         key = (r["antecedent"], r["consequent"])
         if key in seen:
             continue
@@ -92,7 +112,9 @@ def penetration(df: pd.DataFrame) -> list[dict[str, Any]]:
                 "buyers": buyers,
                 "penetration": pct(buyers, total),
                 "avg_spend": clean(df[field].mean()),
-                "buyer_avg_spend": clean(df.loc[df[field] > 0, field].mean()) if buyers else 0.0,
+                "buyer_avg_spend": clean(df.loc[df[field] > 0, field].mean())
+                if buyers
+                else 0.0,
                 "revenue": clean(df[field].sum()),
             }
         )
