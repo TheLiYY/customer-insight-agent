@@ -1,0 +1,441 @@
+{
+  "info": {
+    "name": "Customer Insight Agent API",
+    "description": "客户画像 / 精准推送 / 个性化营销策略 后端接口",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8000"
+    }
+  ],
+  "item": [
+    {
+      "name": "基础信息",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/health",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "health"
+              ]
+            },
+            "description": "Health"
+          },
+          "response": []
+        },
+        {
+          "name": "Dataset Info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/dataset",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "dataset"
+              ]
+            },
+            "description": "Dataset Info"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "数据总览",
+      "item": [
+        {
+          "name": "Get Overview",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/overview",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "overview"
+              ]
+            },
+            "description": "Get Overview"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "自动结论",
+      "item": [
+        {
+          "name": "Get Insights",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/insights?severity=&category=",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "insights"
+              ],
+              "query": [
+                {
+                  "key": "severity",
+                  "value": "",
+                  "description": ""
+                },
+                {
+                  "key": "category",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Get Insights"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "RFM 分层",
+      "item": [
+        {
+          "name": "Get Segments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/segments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "segments"
+              ]
+            },
+            "description": "Get Segments"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "客户画像",
+      "item": [
+        {
+          "name": "Get Personas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/personas",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "personas"
+              ]
+            },
+            "description": "Get Personas"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Persona",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/personas/核心高价值客群",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "personas",
+                "核心高价值客群"
+              ]
+            },
+            "description": "Get Persona"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Elbow",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/clusters/elbow?k_max=",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "clusters",
+                "elbow"
+              ],
+              "query": [
+                {
+                  "key": "k_max",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Get Elbow"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "响应预测",
+      "item": [
+        {
+          "name": "Get Propensity",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/propensity",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "propensity"
+              ]
+            },
+            "description": "Get Propensity"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "品类结构",
+      "item": [
+        {
+          "name": "Get Association",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/association",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "association"
+              ]
+            },
+            "description": "Get Association"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "客户明细",
+      "item": [
+        {
+          "name": "Get Customers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/customers?page=&size=&segment=&cluster=&keyword=&sort=&order=",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "customers"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "",
+                  "description": ""
+                },
+                {
+                  "key": "size",
+                  "value": "",
+                  "description": ""
+                },
+                {
+                  "key": "segment",
+                  "value": "",
+                  "description": ""
+                },
+                {
+                  "key": "cluster",
+                  "value": "",
+                  "description": ""
+                },
+                {
+                  "key": "keyword",
+                  "value": "",
+                  "description": ""
+                },
+                {
+                  "key": "sort",
+                  "value": "",
+                  "description": ""
+                },
+                {
+                  "key": "order",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Get Customers"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Customer",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/customers/C00001",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "customers",
+                "C00001"
+              ]
+            },
+            "description": "Get Customer"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "营销方案",
+      "item": [
+        {
+          "name": "Create Plan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/campaign/plan",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "campaign",
+                "plan"
+              ]
+            },
+            "description": "Create Plan",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"segment\": \"核心高价值客群\",\n  \"budget\": 2000,\n  \"cost_per_contact\": 8,\n  \"discount\": 0.1\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Campaign Options",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/campaign/options",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "campaign",
+                "options"
+              ]
+            },
+            "description": "Campaign Options"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Agent 对话",
+      "item": [
+        {
+          "name": "Chat",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/agent/chat",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agent",
+                "chat"
+              ]
+            },
+            "description": "Chat"
+          },
+          "response": []
+        },
+        {
+          "name": "Suggestions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/agent/suggestions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "agent",
+                "suggestions"
+              ]
+            },
+            "description": "Suggestions"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

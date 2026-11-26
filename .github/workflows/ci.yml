@@ -30,11 +30,14 @@ jobs:
       - name: 准备数据（离线可用内置样例）
         run: python scripts/prepare_data.py
 
-      - name: 冒烟测试（18 个接口/对话用例）
+      - name: 冒烟测试（21 个接口/对话用例）
         run: python backend/tests/smoke_test.py
 
       - name: 导出分析报告（验证 xlsx 生成链路）
         run: python scripts/export_report.py
+
+      - name: 导出 OpenAPI / Postman（验证接口定义可生成）
+        run: python scripts/export_openapi.py
 
   frontend:
     name: 前端构建（Node 20）
