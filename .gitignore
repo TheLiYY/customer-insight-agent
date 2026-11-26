@@ -1,0 +1,36 @@
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+backend/.deps/
+.pytest_cache/
+.mypy_cache/
+
+# ---------- Node ----------
+node_modules/
+frontend/node_modules/
+frontend/.vite/
+*.log
+
+# ---------- 临时目录 ----------
+.tmp/
+tmp/
+*.tmp
+
+# ---------- 编辑器 / 系统 ----------
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ---------- 本地配置（不要提交密钥） ----------
+.env
+.env.local
+.env.*.local
+
+# ---------- 说明 ----------
+# frontend/dist 是构建产物，但为了「克隆下来 python run.py 就能看到页面」，
+# 这里**保留**它不做忽略；改前端后执行 `pnpm build` 重新生成即可。
+# backend/data 下的 csv/xlsx/json 是项目数据资产，需要一并提交。

@@ -1,0 +1,23 @@
+# Conda 环境：新建一个干净的 Python 3.13 环境
+#   conda env create -f environment.yml
+#   conda activate customer-insight
+#   python scripts/prepare_data.py
+#   python backend/run.py
+name: customer-insight
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.13
+  - numpy>=2.0
+  - pandas>=2.2
+  - openpyxl>=3.1
+  - xlsxwriter>=3.2
+  - pip
+  - pip:
+      # Web 服务
+      - fastapi>=0.115
+      - uvicorn>=0.30
+      - python-multipart>=0.0.9
+      # Agent 在线模式（调用大模型 HTTP 接口）
+      - httpx>=0.27

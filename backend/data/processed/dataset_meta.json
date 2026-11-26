@@ -1,0 +1,170 @@
+{
+  "rows": 930,
+  "columns": 26,
+  "response_rate": 0.1355,
+  "avg_income": 51859.26,
+  "avg_spend": 565.91,
+  "avg_age": 51.0,
+  "missing_cells": 0,
+  "duplicate_rows": 0,
+  "fields": [
+    {
+      "name": "customer_id",
+      "label": "客户编号",
+      "type": "字符串",
+      "desc": "系统生成的主键，格式 C00001"
+    },
+    {
+      "name": "age",
+      "label": "年龄",
+      "type": "整数",
+      "desc": "由原始 Year_Birth 换算得到"
+    },
+    {
+      "name": "age_group",
+      "label": "年龄段",
+      "type": "字符串",
+      "desc": "18-30 / 31-40 / 41-50 / 51-60 / 60+"
+    },
+    {
+      "name": "education",
+      "label": "学历",
+      "type": "字符串",
+      "desc": "Basic / 2n Cycle / Graduation / Master / PhD"
+    },
+    {
+      "name": "marital_status",
+      "label": "婚姻状况",
+      "type": "字符串",
+      "desc": "Single / Married / Together / Divorced / Widow"
+    },
+    {
+      "name": "income",
+      "label": "年收入",
+      "type": "浮点",
+      "desc": "家庭年收入（已剔除 666666 等异常值）"
+    },
+    {
+      "name": "kidhome",
+      "label": "小孩数",
+      "type": "整数",
+      "desc": "家中儿童数量"
+    },
+    {
+      "name": "teenhome",
+      "label": "青少年数",
+      "type": "整数",
+      "desc": "家中青少年数量"
+    },
+    {
+      "name": "recency",
+      "label": "最近购买间隔",
+      "type": "整数",
+      "desc": "距上次购买的天数，越小越活跃"
+    },
+    {
+      "name": "tenure_days",
+      "label": "在网天数",
+      "type": "整数",
+      "desc": "成为客户至今天数"
+    },
+    {
+      "name": "mnt_wines",
+      "label": "葡萄酒消费",
+      "type": "浮点",
+      "desc": "近两年葡萄酒消费金额"
+    },
+    {
+      "name": "mnt_fruits",
+      "label": "水果消费",
+      "type": "浮点",
+      "desc": "近两年水果消费金额"
+    },
+    {
+      "name": "mnt_meat",
+      "label": "肉类消费",
+      "type": "浮点",
+      "desc": "近两年肉类消费金额"
+    },
+    {
+      "name": "mnt_fish",
+      "label": "鱼类消费",
+      "type": "浮点",
+      "desc": "近两年鱼类消费金额"
+    },
+    {
+      "name": "mnt_sweet",
+      "label": "甜食消费",
+      "type": "浮点",
+      "desc": "近两年甜食消费金额"
+    },
+    {
+      "name": "mnt_gold",
+      "label": "金饰消费",
+      "type": "浮点",
+      "desc": "近两年金饰/礼品消费金额"
+    },
+    {
+      "name": "total_spend",
+      "label": "总消费额",
+      "type": "浮点",
+      "desc": "六大品类消费之和（RFM 中的 M）"
+    },
+    {
+      "name": "num_deals",
+      "label": "折扣购买次数",
+      "type": "整数",
+      "desc": "使用折扣完成的购买次数"
+    },
+    {
+      "name": "num_web",
+      "label": "线上购买次数",
+      "type": "整数",
+      "desc": "网站购买次数"
+    },
+    {
+      "name": "num_catalog",
+      "label": "目录购买次数",
+      "type": "整数",
+      "desc": "邮购目录购买次数"
+    },
+    {
+      "name": "num_store",
+      "label": "门店购买次数",
+      "type": "整数",
+      "desc": "线下门店购买次数"
+    },
+    {
+      "name": "purchase_freq",
+      "label": "购买频次",
+      "type": "整数",
+      "desc": "三种渠道购买次数之和（RFM 中的 F）"
+    },
+    {
+      "name": "web_visits_month",
+      "label": "月均访问次数",
+      "type": "整数",
+      "desc": "最近一个月访问网站次数"
+    },
+    {
+      "name": "accepted_total",
+      "label": "历史活动接受数",
+      "type": "整数",
+      "desc": "前 5 次营销活动中接受的次数"
+    },
+    {
+      "name": "response",
+      "label": "本次活动响应",
+      "type": "0/1",
+      "desc": "是否响应最近一次营销活动，建模标签"
+    },
+    {
+      "name": "complain",
+      "label": "是否投诉",
+      "type": "0/1",
+      "desc": "近两年是否投诉过"
+    }
+  ],
+  "source": "https://raw.githubusercontent.com/nailson/ifood-data-business-analyst-test/master/ifood_df.csv",
+  "excel": "backend/data/raw/Customer_Personality_Analysis.xlsx"
+}
