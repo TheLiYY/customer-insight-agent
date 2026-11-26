@@ -326,6 +326,15 @@ Bank 的 headline（自动结论）：
 **Q：数据换了之后 K 值、阈值要不要重调？**
 不用。K 值默认 4（可用 `--k` 或修改 `Settings.cluster_k`），阈值是在验证集上按 F1 自动搜出来的，换数据会自己重算。
 
+**Q：切换数据集后 git 变脏了，怎么恢复？**
+数据产物是入库的（保证 Docker 构建离线可复现），所以切数据集会让 `backend/data` 出现改动。
+想回到默认的 iFood 数据：
+
+```bash
+python scripts/prepare_data.py            # 切回 ifood（用仓库内缓存）
+git checkout -- backend/data              # 丢弃这次跑出来的产物
+```
+
 **Q：跑完数据，需要重启后端吗？**
 需要。数据在启动时加载并缓存（`store` 单例 + `lru_cache`），换数据后重启后端才会生效：
 ```bash
