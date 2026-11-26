@@ -1,0 +1,6 @@
+# pnpm 11 的配置项放在这里（package.json 的 pnpm 字段已不再读取）
+# 用 hoisted 布局：Windows 下目录 junction 在 Node 的 ESM 解析里不可靠，
+# 扁平化安装可以避免 vite 找不到 esbuild / rollup 这类传递依赖。
+nodeLinker: hoisted
+onlyBuiltDependencies:
+  - esbuild
