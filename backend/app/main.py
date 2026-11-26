@@ -1,19 +1,30 @@
-"""FastAPI 应用入口。"""
+"""FastAPI 应用入口（纯 API 服务）。
+
+前后端分离部署：这里只提供 /api 接口与 /docs 文档，
+前端是一个独立的静态站点（开发时 Vite dev server，生产时任意静态服务器 / Nginx）。
+
+好处：
+1. 前端可以单独部署到 CDN，不占后端带宽；
+2. 后端扩容、换语言都不影响前端；
+3. 本地开发时前端 5173 通过代理访问 8000，跨域由 CORS 处理。
+"""
 from __future__ import annotations
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
 
 from .agent.routes import agent_router
 from .api.routes import router
-from .core.config import PROJECT_DIR, settings
+from .core.config import settings
 
 app = FastAPI(
     title=settings.app_name,
     version=settings.version,
-    description="客户画像 · 精准推送 · 个性化营销策略",
+    description=(
+        "客户画像 · 精准推送 · 个性化营销策略\n\n"
+        "接口说明见仓库 docs/API.md；本服务的 /openapi.json 可直接导入 Apifox / Postman。"
+    ),
 )
 
 app.add_middleware(
@@ -37,18 +48,14 @@ async def unhandled_exception(request, exc: Exception) -> JSONResponse:
     )
 
 
-@app.get("/")
+@app.get("/", include_in_schema=False)
 def root() -> dict:
     return {
         "app": settings.app_name,
         "version": settings.version,
         "docs": "/docs",
+        "openapi": "/openapi.json",
         "api": "/api/overview",
         "agent": "/api/agent/chat",
+        "note": "本项目前后端分离：前端由 Vite dev server 或独立静态服务器（scripts/serve_frontend.py / Nginx）提供。",
     }
-
-
-# 生产模式下直接托管前端构建产物（frontend/dist）
-DIST = PROJECT_DIR / "frontend" / "dist"
-if DIST.exists():
-    app.mount("/app", StaticFiles(directory=str(DIST), html=True), name="frontend")

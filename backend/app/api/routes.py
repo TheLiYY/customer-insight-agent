@@ -45,6 +45,29 @@ def get_overview() -> dict[str, Any]:
     return store.overview
 
 
+# ---------------------------------------------------------------- 自动结论
+@router.get("/insights")
+def get_insights(severity: str | None = None, category: str | None = None) -> dict[str, Any]:
+    """自动分析结论：把统计结果翻译成结论 + 证据 + 建议动作。
+
+    可选按严重程度（opportunity/risk/insight）与类别过滤。
+    """
+    data = store.insights
+    items = data["insights"]
+    if severity:
+        items = [i for i in items if i["severity"] == severity]
+    if category:
+        items = [i for i in items if i["category"] == category]
+    return {
+        **data,
+        "insights": items,
+        "counts": {
+            **data["counts"],
+            "filtered": len(items),
+        },
+    }
+
+
 # ---------------------------------------------------------------- RFM 分层
 @router.get("/segments")
 def get_segments() -> dict[str, Any]:

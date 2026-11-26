@@ -339,6 +339,38 @@ def customer_profile(args: dict) -> list[dict]:
 
 
 # ------------------------------------------------------------------ 注册表
+def insights_report(args: dict) -> list[dict]:
+    """自动分析结论：一次把所有分析跑完，直接给出结论、证据和建议动作。"""
+    data = store.insights
+    items = data["insights"]
+    blocks: list[dict] = [
+        kpi(
+            [
+                {"label": "结论总数", "value": data["counts"]["total"], "suffix": "条"},
+                {"label": "增长机会", "value": data["counts"]["opportunity"], "suffix": "条"},
+                {"label": "风险预警", "value": data["counts"]["risk"], "suffix": "条"},
+                {"label": "结构洞察", "value": data["counts"]["insight"], "suffix": "条"},
+            ]
+        ),
+        text(data["headline"]),
+    ]
+    for item in items:
+        blocks.append(text(f"【{item['severity_label']}】{item['title']}\n{item['conclusion']}\n建议：{item['action']}"))
+    if data["actions"]:
+        blocks.append(
+            table(
+                "按优先级排序的行动清单",
+                [
+                    {"key": "priority", "label": "优先级"},
+                    {"key": "action", "label": "动作"},
+                    {"key": "from", "label": "来自结论"},
+                ],
+                data["actions"],
+            )
+        )
+    return blocks
+
+
 TOOL_SPECS: list[dict] = [
     {
         "name": "overview_report",
@@ -381,6 +413,12 @@ TOOL_SPECS: list[dict] = [
         "description": "查询单个客户的画像详情，需要提供 customer_id。",
         "params": {"customer_id": "客户编号，例如 C00001"},
         "run": customer_profile,
+    },
+    {
+        "name": "insights_report",
+        "description": "自动分析结论：把所有分析跑完后直接输出「发现了什么 + 证据 + 该做什么」，适合「给我结论」「有什么建议」「分析完总结一下」这类问题。",
+        "params": {},
+        "run": insights_report,
     },
 ]
 

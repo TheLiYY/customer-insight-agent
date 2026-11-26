@@ -19,6 +19,8 @@ CASES = [
     ("GET", "/api/health", None),
     ("GET", "/api/dataset", None),
     ("GET", "/api/overview", None),
+    ("GET", "/api/insights", None),
+    ("GET", "/api/insights?severity=risk", None),
     ("GET", "/api/segments", None),
     ("GET", "/api/personas", None),
     ("GET", "/api/propensity", None),
@@ -48,6 +50,7 @@ def main() -> int:
     # 对话链路
     for message in [
         "先看看整体数据情况",
+        "分析完之后有什么结论和建议？",
         "客户按 RFM 怎么分层？",
         "帮我看看客户画像",
         "预测一下哪些客户最可能响应下次活动",

@@ -17,6 +17,10 @@ from ..core.store import store
 # 关键词 → 工具。越靠前优先级越高。
 INTENTS: list[dict[str, Any]] = [
     {
+        "tool": "insights_report",
+        "keywords": ["结论", "洞察", "自动分析", "总结", "发现", "下一步", "怎么办", "建议", "该做什么", "分析完", "怎么看"],
+    },
+    {
         "tool": "campaign_plan",
         "keywords": ["方案", "推送", "营销", "活动", "投放", "触达", "话术", "预算", "促销", "怎么卖"],
     },
@@ -114,6 +118,7 @@ def _reply_for(tool_name: str, args: dict, blocks: list[dict]) -> str:
         "campaign_plan": "方案已经生成，圈人、选品、渠道、话术和 ROI 都在下面：",
         "category_report": "品类结构和关联关系如下，可以拿来做交叉销售：",
         "customer_profile": "这位客户的画像如下：",
+        "insights_report": "我把所有分析跑完之后，自动整理出这些结论：",
     }.get(tool_name, "分析结果如下：")
 
     tail = ""
@@ -269,6 +274,7 @@ def chat(message: str, history: list[dict] | None = None) -> dict[str, Any]:
 def suggestions() -> list[dict]:
     """给前端的快捷问题，降低「不会提问」的门槛。"""
     return [
+        {"label": "自动分析结论", "message": "分析完之后有什么结论和建议？"},
         {"label": "整体数据怎么样？", "message": "先看看整体数据情况"},
         {"label": "客户怎么分层？", "message": "客户按 RFM 怎么分层？哪些最重要？"},
         {"label": "看看客户画像", "message": "帮我看看客户画像和人群特征"},
