@@ -1,7 +1,14 @@
+// 前后端分离：默认走同源的 /api（开发时由 Vite 代理、生产时由 Nginx/静态服务器代理），
+// 也可以构建时用 VITE_API_BASE=http://127.0.0.1:8000/api 直连后端。
 const BASE = import.meta.env.VITE_API_BASE || '/api'
 
 async function request(path, init) {
-  const resp = await fetch(`${BASE}${path}`, init)
+  let resp
+  try {
+    resp = await fetch(`${BASE}${path}`, init)
+  } catch (err) {
+    throw new Error(`无法连接后端 ${BASE}（请确认后端已启动，且地址配置正确）`)
+  }
   if (!resp.ok) {
     let detail = `${resp.status} ${resp.statusText}`
     try {
@@ -19,6 +26,7 @@ export const api = {
   health: () => request('/health'),
   dataset: () => request('/dataset'),
   overview: () => request('/overview'),
+  insights: () => request('/insights'),
   segments: () => request('/segments'),
   personas: () => request('/personas'),
   elbow: (kMax = 7) => request(`/clusters/elbow?k_max=${kMax}`),

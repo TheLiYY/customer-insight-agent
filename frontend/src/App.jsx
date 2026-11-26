@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from './lib/api'
 import Overview from './pages/Overview'
+import Insights from './pages/Insights'
 import Segments from './pages/Segments'
 import Personas from './pages/Personas'
 import Propensity from './pages/Propensity'
@@ -10,6 +11,7 @@ import Data from './pages/Data'
 
 const NAV = [
   { key: 'overview', icon: '📊', label: '数据总览', component: Overview },
+  { key: 'insights', icon: '📌', label: '自动结论', component: Insights },
   { key: 'personas', icon: '👥', label: '客户画像', component: Personas },
   { key: 'segments', icon: '🧩', label: 'RFM 分层', component: Segments },
   { key: 'propensity', icon: '🎯', label: '响应预测', component: Propensity },
@@ -73,10 +75,7 @@ export default function App() {
 
       <main className="main">
         <div className="page-head">
-          <div>
-            <h1>{current.label}</h1>
-            <p>{PAGE_DESC[current.key]}</p>
-          </div>
+          <h1>{current.label}</h1>
           {health && (
             <span className={`badge-llm ${health.llm_enabled ? '' : 'off'}`}>
               {health.llm_enabled ? 'LLM 在线模式' : '离线规则模式'}
@@ -88,14 +87,4 @@ export default function App() {
       </main>
     </div>
   )
-}
-
-const PAGE_DESC = {
-  overview: '先把数据看明白：客户是谁、买了什么、从哪买、对活动的反应如何。',
-  personas: '用 K-Means 把客户分成若干可解释的画像群体，每一群都能直接对应一套打法。',
-  segments: 'RFM 三维打分，把客户放进 8 个经典分层里，判断该投多少资源。',
-  propensity: '逻辑回归预测「下一次活动谁会买」，配合提升度曲线决定该联系多少人。',
-  campaign: '选人群、定预算、出选品/渠道/话术/ROI，一键生成可执行的营销方案。',
-  agent: '用自然语言提问，Agent 会调用上面的分析能力并把结果画出来。',
-  data: '数据来源、字段字典与预处理口径，方便复现与二次开发。',
 }

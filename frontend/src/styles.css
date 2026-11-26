@@ -798,3 +798,14 @@ tbody tr:hover {
   font-size: 13px;
   line-height: 1.8;
 }
+
+/* ---- 自动结论页 ---- */
+.link-btn {
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+}
+.link-btn:hover { text-decoration: underline; }

@@ -27,7 +27,7 @@ export default function Overview() {
         <Kpi label="平均家庭收入" value={money(k.avg_income)} tone="teal" hint="年收入" />
         <Kpi label="近两年人均消费" value={money(k.avg_spend)} tone="teal" hint={`累计营收 ${money(k.total_revenue)}`} />
         <Kpi label="平均下单次数" value={num(k.avg_freq, 1)} suffix="次" hint="线上+目录+门店" />
-        <Kpi label="沉睡客户占比" value={pct(k.dormant_rate)} tone="rose" hint={`${k.dormant_count} 人超 60 天未购`} />
+        <Kpi label="沉睡客户占比" value={pct(k.dormant_rate)} tone="rose" hint={`${k.dormant_count} 人超 75 天未购`} />
       </div>
 
       <div className="grid grid-2">
@@ -148,16 +148,21 @@ export default function Overview() {
 
         <Card title="近两年消费额分布" subtitle="长尾客户占比高，头部客户贡献主要营收">
           <Chart
-            height={250}
+            height={270}
             option={{
-              grid,
+              grid: { left: 48, right: 20, top: 24, bottom: 62 },
               tooltip: { trigger: 'axis' },
-              xAxis: { type: 'category', data: data.spend_hist.map((d) => d.name), ...axisStyle, axisLabel: { ...axisStyle.axisLabel, rotate: 30 } },
+              xAxis: {
+                type: 'category',
+                data: data.spend_hist.map((d) => d.name),
+                ...axisStyle,
+                axisLabel: { ...axisStyle.axisLabel, interval: 0, rotate: 32, fontSize: 10, margin: 10 },
+              },
               yAxis: { type: 'value', ...axisStyle },
               series: [
                 {
                   type: 'bar',
-                  barWidth: '72%',
+                  barWidth: '68%',
                   data: data.spend_hist.map((d) => d.value),
                   itemStyle: { color: PALETTE[1], borderRadius: [5, 5, 0, 0] },
                 },
@@ -169,13 +174,13 @@ export default function Overview() {
 
       <Card title="核心指标相关性" subtitle="收入与消费额高度正相关；近一次购买距今越久（Recency 大），消费越少">
         <Chart
-          height={420}
+          height={430}
           option={{
             tooltip: {
               position: 'top',
               formatter: (p) => `${data.correlation.x[p.data[0]]} × ${data.correlation.y[p.data[1]]}<br/>相关系数 ${p.data[2].toFixed(2)}`,
             },
-            grid: { left: 90, right: 30, top: 20, bottom: 70 },
+            grid: { left: 96, right: 30, top: 20, bottom: 84 },
             xAxis: { type: 'category', data: data.correlation.x, splitArea: { show: true }, ...axisStyle, axisLabel: { ...axisStyle.axisLabel, rotate: 30 } },
             yAxis: { type: 'category', data: data.correlation.y, splitArea: { show: true }, ...axisStyle },
             visualMap: {
@@ -200,6 +205,13 @@ export default function Overview() {
             ],
           }}
         />
+        <p style={{ margin: '10px 4px 0', fontSize: 12, lineHeight: 1.7, color: '#6b7280' }}>
+          读图方法：每一格是「行指标」和「列指标」的相关系数，取值 -1 到 +1。
+          <b> 蓝色越深越接近 +1</b>（两个指标同涨同跌，比如收入与消费额 0.80 表示强正相关）；
+          <b> 红色越深越接近 -1</b>（一个涨另一个跌，比如月访问次数与消费额）；
+          接近白色（±0.1 以内）说明两者几乎没有线性关系。对角线恒为 1（自己和自己的相关）。
+          完整术语解释见仓库 docs/GLOSSARY.md。
+        </p>
       </Card>
     </>
   )
