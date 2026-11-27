@@ -120,7 +120,7 @@ export default function Campaign({ onNavigate }) {
                 最后还要能算清楚 <strong>花多少、回多少</strong>（ROI）。
               </p>
               <p className="muted" style={{ lineHeight: 2, marginBottom: 0 }}>
-                本页把这五件事 + ROI 全部自动生成，参数一改结果就跟着变，方便现场演示「预算 2 万 vs 5 万」的差别。
+                本页把这五件事 + ROI 全部自动生成，改一下预算或折扣，结果会立刻跟着变。
               </p>
             </Card>
           )}
@@ -230,7 +230,7 @@ export default function Campaign({ onNavigate }) {
 
               <Card title="圈定名单（前 10 位）"  extra={
                 <button type="button" className="btn" onClick={() => onNavigate('agent')}>
-                  去 Agent 里继续问
+                  去智能问答继续
                 </button>
               }>
                 <Table

@@ -30,9 +30,11 @@ python scripts/export_openapi.py
 ```json
 {
   "status": "ok",
-  "app": "Customer Insight Agent",
-  "version": "1.0.0",
+  "app": "CustLens · 客户洞察与精准营销平台",
+  "version": "1.1.0",
   "llm_enabled": false,
+  "dataset_name": "iFood 营销活动客户数据（Customer Personality Analysis）",
+  "dataset_preset": "ifood",
   "customers": 2021,
   "segments": 8,
   "clusters": 4,
@@ -43,7 +45,9 @@ python scripts/export_openapi.py
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `llm_enabled` | bool | 是否配置了大模型（决定 Agent 走在线还是离线模式） |
+| `llm_enabled` | bool | 是否配置了大模型（决定智能问答走在线还是离线规则模式） |
+| `dataset_name` | string | 当前数据集的显示名（页头那枚「示例数据 / 我的数据」徽标用它） |
+| `dataset_preset` | string | `ifood` / `mall` / `bank` 表示内置示例数据，`custom` 表示你自己上传的数据 |
 | `customers` | int | 清洗后客户数 |
 | `segments` | int | RFM 分层数（固定 8） |
 | `clusters` | int | 聚类客群数 |
@@ -519,7 +523,7 @@ python scripts/export_openapi.py
 
 # 数据导入（上传自己的客户表）
 
-这几个接口对应页面上「导入数据」的完整流程：**先 inspect 试读，确认识别无误后再 apply 真正切换**。apply 内部会调用 `scripts/prepare_data.py` 重算，然后刷新服务端缓存，所以不需要重启后端。
+这几个接口对应页面上「我的数据」的完整流程：**先 inspect 试读，确认识别无误后再 apply 真正切换**。apply 内部会调用 `scripts/prepare_data.py` 重算，然后刷新服务端缓存，所以不需要重启后端。
 
 ## POST /api/import/inspect
 
@@ -552,13 +556,21 @@ python scripts/export_openapi.py
 
 执行清洗并切换数据源，返回 `{ "ok": true, "took_ms": 2067, "log": ["[ok] ..."], "dataset": { ...与 /api/dataset 同结构... } }`。清洗失败返回 400，`detail` 里带日志尾部，方便定位是哪一列的问题。
 
+## GET /api/import/template
+
+下载一份空的数据模板（xlsx，三个 sheet：客户级宽表 / 订单明细 / 填写说明），照着填就能被 100% 认出来。
+
+响应是二进制文件流：`Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`，`Content-Disposition: attachment; filename="custlens-data-template.xlsx"`。
+
+页面上「我的数据」的「下载数据模板」就是直接链到这个地址，不需要额外鉴权。
+
 ## POST /api/import/preset
 
 ```json
 { "dataset": "ifood" }
 ```
 
-切回内置数据集，`dataset` 取 `ifood` / `mall` / `bank`，返回结构与 apply 相同。
+切回内置数据集，`dataset` 取 `ifood` / `mall` / `bank`，返回结构与 apply 相同。**这是给命令行 / 自动化测试用的接口，页面上不再提供入口**（页面上传自己的数据才是主路径）。
 
 ## GET /api/import/presets
 

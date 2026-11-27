@@ -4,11 +4,11 @@ import { Card, ErrorBox, Kpi, Loading, Table, Tag } from '../components/ui'
 import { num } from '../lib/format'
 
 const CAP_LABELS = {
-  has_income: '收入字段',
+  has_income: '收入',
   has_monetary: '消费金额',
-  has_recency: '最近购买时间',
+  has_recency: '最近购买',
   has_frequency: '购买频次',
-  has_response: '活动响应标签',
+  has_response: '活动结果',
 }
 const ACCEPT = '.xlsx,.xlsm,.xls,.csv,.tsv,.txt,.json'
 
@@ -20,11 +20,9 @@ export default function Import({ onNavigate, onDataChanged }) {
   const [inspect, setInspect] = useState(null)
   const [sheet, setSheet] = useState('')
   const [done, setDone] = useState(null)
-  const [presets, setPresets] = useState([])
-  const [history, setHistory] = useState([])
+  const [history, setHistory] = useState({ uploads: [], current: null, limits: {} })
 
   useEffect(() => {
-    api.importPresets().then((r) => setPresets(r.presets || [])).catch(() => {})
     refreshHistory()
   }, [])
 
@@ -37,7 +35,7 @@ export default function Import({ onNavigate, onDataChanged }) {
     setError('')
     setDone(null)
     setInspect(null)
-    setBusy('正在试读文件、识别字段…')
+    setBusy('正在读取并识别字段…')
     try {
       const data = await api.importInspect(file, nextSheet)
       setInspect(data)
@@ -74,27 +72,14 @@ export default function Import({ onNavigate, onDataChanged }) {
     }
   }
 
-  async function applyPreset(key) {
-    setBusy('正在载入演示数据…')
+  async function applyHistory(item) {
+    setBusy('正在应用这份文件…')
     setError('')
     setDone(null)
     try {
-      const res = await api.importPreset(key)
-      setDone(res)
-      if (onDataChanged) onDataChanged()
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setBusy('')
-    }
-  }
-
-  async function applyHistory(item) {
-    setBusy('正在应用历史文件…')
-    setError('')
-    try {
       const res = await api.importApply({ file: item.file })
       setDone(res)
+      refreshHistory()
       if (onDataChanged) onDataChanged()
     } catch (err) {
       setError(err.message)
@@ -110,15 +95,19 @@ export default function Import({ onNavigate, onDataChanged }) {
       <ErrorBox error={error ? { message: error } : null} />
 
       <Card
-        title="上传一份客户表格"
+        title="用你自己的客户数据"
         extra={
           current ? (
-            <span className="muted small">
-              当前数据：{current.rows} 行 · {current.name}
+            <span className="quiet">
+              当前：{current.rows} 位客户 · {current.name}
             </span>
           ) : null
         }
       >
+        <p className="quiet" style={{ marginTop: 0 }}>
+          一行一位客户，或一行一笔订单都可以；列名不用改，中英文、常见叫法都能自动认出来。
+        </p>
+
         <div
           className={`dropzone ${dragging ? 'dragging' : ''}`}
           onDragOver={(e) => {
@@ -131,10 +120,9 @@ export default function Import({ onNavigate, onDataChanged }) {
           role="button"
           tabIndex={0}
         >
-          <div className="dropzone-icon">📥</div>
-          <strong>把 Excel / CSV 拖到这里，或点一下选择文件</strong>
-          <span className="muted small">支持 .xlsx / .xls / .csv / .tsv / .json，单个文件最大 {history.limits?.max_mb || 40}MB</span>
-          <span className="muted small">不用改表头：中英文列名、订单明细、多 sheet 都能自动识别</span>
+          <div className="dropzone-icon">📄</div>
+          <strong>把文件拖进来，或点一下选择</strong>
+          <span className="quiet">支持 xlsx / xls / csv / tsv / json，单个文件最大 {history.limits?.max_mb || 40}MB</span>
           <input
             ref={inputRef}
             type="file"
@@ -148,18 +136,27 @@ export default function Import({ onNavigate, onDataChanged }) {
           />
         </div>
 
+        <div className="row-between" style={{ marginTop: 12 }}>
+          <a className="link-quiet" href="/api/import/template" download>
+            下载数据模板（含客户宽表与订单明细两种写法）
+          </a>
+          {history.uploads && history.uploads.length > 0 && (
+            <span className="quiet">最近上传 {history.uploads.length} 个文件</span>
+          )}
+        </div>
+
         {busy && <Loading text={busy} />}
 
         {done && (
           <div className="success-box">
-            <strong>已切换数据：{done.dataset?.name}</strong>
-            <p className="muted small">
-              {num(done.dataset?.raw_rows)} 行原始数据 → 标准表 {num(done.dataset?.rows)} 位客户 × {done.dataset?.columns} 个字段
+            <strong>已切换为你的数据：{done.dataset?.name}</strong>
+            <p className="quiet" style={{ margin: '6px 0' }}>
+              {num(done.dataset?.raw_rows)} 行原始数据 → {num(done.dataset?.rows)} 位客户 × {done.dataset?.columns} 个字段
               {done.dataset?.grain ? ` · ${done.dataset.grain}` : ''}
               {done.took_ms ? ` · 用时 ${(done.took_ms / 1000).toFixed(1)}s` : ''}
             </p>
             <button type="button" className="link-btn" onClick={() => onNavigate && onNavigate('overview')}>
-              去看看新的分析结果 →
+              去看新的分析结果 →
             </button>
           </div>
         )}
@@ -167,20 +164,17 @@ export default function Import({ onNavigate, onDataChanged }) {
 
       {inspect && (
         <>
-          <Card
-            title="第 1 步：确认字段识别结果"
-            extra={<Tag color="#3b6cf6">{inspect.name}</Tag>}
-          >
+          <Card title="先确认一下识别结果" extra={<Tag color="#3b6cf6">{inspect.name}</Tag>}>
             <div className="kpis">
-              <Kpi label="原始数据" value={num(inspect.raw_rows)} suffix={` 行 × ${inspect.raw_columns} 列`} hint={inspect.sheets?.length ? `sheet：${inspect.sheet}` : 'CSV / JSON'} />
-              <Kpi label="标准表" value={num(inspect.output_rows)} suffix={` 位客户 × ${inspect.output_columns} 列`} hint={inspect.grain_label} />
-              <Kpi label="命中标准字段" value={inspect.matched} suffix=" 个" hint="其余列自动忽略或用作品类/渠道" />
+              <Kpi label="读到" value={num(inspect.raw_rows)} suffix={` 行 × ${inspect.raw_columns} 列`} hint={inspect.sheets?.length ? `sheet：${inspect.sheet}` : 'CSV / JSON'} />
+              <Kpi label="整理成" value={num(inspect.output_rows)} suffix={` 位客户 × ${inspect.output_columns} 列`} hint={inspect.grain_label} />
+              <Kpi label="认出的字段" value={inspect.matched} suffix=" 个" hint="其余列自动忽略或用作品类/渠道" />
               <Kpi label="去掉重复行" value={num(inspect.dropped_duplicates)} suffix=" 行" hint="完全相同的行只保留一条" />
             </div>
 
             {inspect.sheets && inspect.sheets.length > 1 && (
               <div className="field-row">
-                <label>选择 sheet</label>
+                <label>工作表</label>
                 <select
                   value={sheet}
                   onChange={(e) => {
@@ -196,7 +190,6 @@ export default function Import({ onNavigate, onDataChanged }) {
                     </option>
                   ))}
                 </select>
-                <span className="muted small">切换 sheet 会重新试读一次</span>
               </div>
             )}
 
@@ -208,7 +201,7 @@ export default function Import({ onNavigate, onDataChanged }) {
                 </Tag>
               ))}
               <Tag color={inspect.capabilities.propensity ? '#0f9d58' : '#8c8f9a'}>
-                {inspect.capabilities.propensity ? '✓ ' : '✗ '}响应预测可用
+                {inspect.capabilities.propensity ? '✓ ' : '✗ '}响应预测
               </Tag>
             </div>
 
@@ -222,18 +215,20 @@ export default function Import({ onNavigate, onDataChanged }) {
               </div>
             )}
 
-            <div className="field-row">
+            <div className="field-row" style={{ marginTop: 8 }}>
               <button type="button" className="btn primary" onClick={applyInspect} disabled={!!busy}>
-                就用这份数据，开始分析
+                用这份数据开始分析
               </button>
               <button type="button" className="btn" onClick={() => setInspect(null)} disabled={!!busy}>
-                取消
+                换一个文件
               </button>
-              <span className="muted small">应用后所有页面会立刻换成这份数据，可随时切回内置数据集。</span>
             </div>
           </Card>
 
-          <Card title="字段自动映射">
+          <Card
+            title="字段对应关系"
+            extra={<span className="quiet">认错的列，在 backend/app/core/schema.py 里加个别名即可</span>}
+          >
             <Table
               columns={[
                 { key: 'label', title: '标准字段' },
@@ -245,11 +240,11 @@ export default function Import({ onNavigate, onDataChanged }) {
               rows={inspect.mapping}
             />
             {inspect.unused_columns && inspect.unused_columns.length > 0 && (
-              <p className="muted small">没用上的列：{inspect.unused_columns.join('、')}</p>
+              <p className="quiet">没用上的列：{inspect.unused_columns.join('、')}</p>
             )}
           </Card>
 
-          <Card title="原始数据预览（前 6 行）">
+          <Card title="文件前 6 行">
             <Table
               columns={inspect.preview.columns.map((c) => ({ key: c, title: c }))}
               rows={inspect.preview.rows.map((row, i) => {
@@ -265,39 +260,31 @@ export default function Import({ onNavigate, onDataChanged }) {
         </>
       )}
 
-      <Card title="或者直接用内置数据集" extra={<span className="muted small">不用联网，随时切回来</span>}>
-        <div className="btn-row">
-          {presets.map((p) => (
-            <button key={p.key} type="button" className="btn" onClick={() => applyPreset(p.key)} disabled={!!busy}>
-              {p.label}
-            </button>
-          ))}
-        </div>
-      </Card>
-
-      <Card title="最近上传" extra={<span className="muted small">只保留最近 {history.limits?.keep || 30} 个文件</span>}>
-        <Table
-          columns={[
-            { key: 'name', title: '文件' },
-            { key: 'uploaded_at', title: '上传时间', width: 150 },
-            { key: 'size', title: '大小', width: 100, align: 'right', render: (r) => `${(r.size / 1024).toFixed(0)} KB` },
-            {
-              key: 'act',
-              title: '',
-              width: 110,
-              align: 'right',
-              render: (r) => (
-                <button type="button" className="link-btn" onClick={() => applyHistory(r)} disabled={!!busy}>
-                  直接应用
-                </button>
-              ),
-            },
-          ]}
-          rows={history.uploads || []}
-          rowKey="file"
-          empty="还没有上传过文件"
-        />
-      </Card>
+      {history.uploads && history.uploads.length > 0 && (
+        <Card title="最近用过的文件" extra={<span className="quiet">只保留最近 {history.limits?.keep || 30} 个</span>}>
+          <Table
+            columns={[
+              { key: 'name', title: '文件' },
+              { key: 'uploaded_at', title: '上传时间', width: 150 },
+              { key: 'size', title: '大小', width: 100, align: 'right', render: (r) => `${(r.size / 1024).toFixed(0)} KB` },
+              {
+                key: 'act',
+                title: '',
+                width: 90,
+                align: 'right',
+                render: (r) => (
+                  <button type="button" className="link-btn" onClick={() => applyHistory(r)} disabled={!!busy}>
+                    再用一次
+                  </button>
+                ),
+              },
+            ]}
+            rows={history.uploads.slice(0, 5)}
+            rowKey="file"
+            empty="还没有上传过文件"
+          />
+        </Card>
+      )}
     </div>
   )
 }

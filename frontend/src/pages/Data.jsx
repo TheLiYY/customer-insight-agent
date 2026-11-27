@@ -140,7 +140,7 @@ export default function Data() {
 
       <Card title="数据处理流程" >
         <ol className="bullets" style={{ paddingLeft: 20 }}>
-          <li><strong>读取</strong>：支持内置数据集、任意 CSV/Excel 文件，也支持直接指向你公司导出的客户表。</li>
+          <li><strong>读取</strong>：直接读你上传的 CSV / Excel，也支持指向公司系统导出的客户表或订单明细。</li>
           <li><strong>识别</strong>：按别名表自动判断哪列是客户编号、金额、频次、最近购买时间（见上表）。</li>
           <li><strong>清洗</strong>：整行去重；收入做 99 分位截断，避免极端值把聚类带偏；年龄裁剪到 18-90 岁。</li>
           <li><strong>兼容</strong>：订单明细（一单一行）会自动按客户聚合；缺失的金额/频次用可得字段兜底，并在下方 warnings 里说明。</li>
@@ -167,7 +167,7 @@ export default function Data() {
       <Card title="口径说明与局限" >
         <ul className="bullets">
           <li>
-            <strong>样本量</strong>：当前 {num(data.rows)} 条客户记录，足够跑通全流程和演示模型；正式业务请换成自己的全量客户表。
+            <strong>样本量</strong>：当前 {num(data.rows)} 条客户记录。结论的稳定性取决于数据量，客户数越多、时间跨度越长，分层与预测越可信。
           </li>
           <li>
             <strong>标签定义</strong>：响应预测的正样本是「接受了最近一次促销活动」，属于典型的不均衡二分类。

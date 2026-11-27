@@ -10,6 +10,8 @@ function has(rows) {
   return Array.isArray(rows) && rows.length > 0
 }
 
+const AGE_ORDER = ['18-30', '31-40', '41-50', '51-60', '60+']
+
 export default function Overview() {
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
@@ -110,24 +112,47 @@ export default function Overview() {
         ) : null}
 
         {has(data.marital) ? (
-          <Card title="婚姻状况" >
-            <Chart
-              height={260}
-              option={{
-                tooltip: { trigger: 'item', formatter: '{b}<br/>{c} 人（{d}%）' },
-                legend: { bottom: 0, icon: 'circle', itemWidth: 8, itemHeight: 8, textStyle: { fontSize: 12 } },
-                series: [
-                  {
-                    type: 'pie',
-                    radius: '62%',
-                    center: ['50%', '44%'],
-                    label: { formatter: '{b} {d}%', fontSize: 11, color: '#6b7280' },
-                    data: data.marital.map((d, i) => ({ name: d.name, value: d.value, itemStyle: { color: PALETTE[i % PALETTE.length] } })),
-                  },
-                ],
-              }}
- />
-          </Card>
+          <div style={{ gridColumn: has(data.gender) ? 'auto' : '1 / -1' }}>
+            <Card title="婚姻状况">
+              {has(data.gender) ? (
+                <Chart
+                  height={260}
+                  option={{
+                    tooltip: { trigger: 'item', formatter: '{b}<br/>{c} 人（{d}%）' },
+                    legend: { bottom: 0, icon: 'circle', itemWidth: 8, itemHeight: 8, textStyle: { fontSize: 12 } },
+                    series: [
+                      {
+                        type: 'pie',
+                        radius: '62%',
+                        center: ['50%', '44%'],
+                        label: { formatter: '{b} {d}%', fontSize: 11, color: '#6b7280' },
+                        data: data.marital.map((d, i) => ({ name: d.name, value: d.value, itemStyle: { color: PALETTE[i % PALETTE.length] } })),
+                      },
+                    ],
+                  }}
+                />
+              ) : (
+                <Chart
+                  height={Math.max(180, data.marital.length * 42 + 60)}
+                  option={{
+                    grid: { left: 78, right: 70, top: 10, bottom: 10 },
+                    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: (v) => `${v} 人` },
+                    xAxis: { type: 'value', ...axisStyle, axisLabel: { show: false }, splitLine: { show: false } },
+                    yAxis: { type: 'category', data: data.marital.map((d) => d.name).reverse(), ...axisStyle },
+                    series: [
+                      {
+                        type: 'bar',
+                        barWidth: '55%',
+                        data: data.marital.map((d) => d.value).reverse(),
+                        itemStyle: { borderRadius: [0, 4, 4, 0], color: PALETTE[2] },
+                        label: { show: true, position: 'right', fontSize: 12, formatter: '{c} 人' },
+                      },
+                    ],
+                  }}
+                />
+              )}
+            </Card>
+          </div>
         ) : null}
       </div>
 
@@ -194,14 +219,14 @@ export default function Overview() {
               option={{
                 grid,
                 tooltip: { trigger: 'axis', valueFormatter: (v) => `${Number(v).toFixed(1)}%` },
-                xAxis: { type: 'category', data: data.response_by_age.map((d) => d.name), ...axisStyle },
+                xAxis: { type: 'category', data: [...data.response_by_age].sort((a, b) => AGE_ORDER.indexOf(a.name) - AGE_ORDER.indexOf(b.name)).map((d) => d.name), ...axisStyle },
                 yAxis: { type: 'value', axisLabel: { formatter: '{value}%' }, ...axisStyle },
                 series: [
                   {
                     type: 'line',
                     smooth: true,
                     symbolSize: 8,
-                    data: data.response_by_age.map((d) => Number(((d.value || 0) * 100).toFixed(2))),
+                    data: [...data.response_by_age].sort((a, b) => AGE_ORDER.indexOf(a.name) - AGE_ORDER.indexOf(b.name)).map((d) => Number(((d.value || 0) * 100).toFixed(2))),
                     itemStyle: { color: PALETTE[3] },
                     areaStyle: { opacity: 0.12, color: PALETTE[3] },
                     lineStyle: { width: 2.5 },

@@ -12,13 +12,13 @@ import Data from './pages/Data'
 
 const NAV = [
   { key: 'overview', icon: '📊', label: '数据总览', component: Overview },
-  { key: 'insights', icon: '📌', label: '自动结论', component: Insights },
   { key: 'personas', icon: '👥', label: '客户画像', component: Personas },
-  { key: 'segments', icon: '🧩', label: 'RFM 分层', component: Segments },
+  { key: 'segments', icon: '🧩', label: '客户分层', component: Segments },
   { key: 'propensity', icon: '🎯', label: '响应预测', component: Propensity },
   { key: 'campaign', icon: '🚀', label: '营销方案', component: Campaign },
-  { key: 'agent', icon: '💬', label: 'Agent 助手', component: Agent },
-  { key: 'import', icon: '📥', label: '导入数据', component: Import },
+  { key: 'insights', icon: '📌', label: '自动结论', component: Insights },
+  { key: 'agent', icon: '💬', label: '智能问答', component: Agent },
+  { key: 'import', icon: '📤', label: '我的数据', component: Import },
   { key: 'data', icon: '🗂️', label: '数据说明', component: Data },
 ]
 
@@ -54,7 +54,7 @@ export default function App() {
     if (window.location.hash !== `#/${key}`) window.location.hash = `#/${key}`
   }
 
-  // 导入新数据后：刷新侧边栏统计，并把所有页面重新挂载一次（组件挂载时才会重新取数）
+  // 导入新数据后：刷新页头信息，并把所有页面重新挂载一次（组件挂载时才会重新取数）
   function handleDataChanged() {
     loadHealth()
     setRefreshKey((k) => k + 1)
@@ -62,6 +62,7 @@ export default function App() {
 
   const current = NAV.find((n) => n.key === page) || NAV[0]
   const Page = current.component
+  const isSample = health && health.dataset_preset && health.dataset_preset !== 'custom'
 
   return (
     <div className="shell">
@@ -90,14 +91,12 @@ export default function App() {
         <div className="sidebar-foot">
           {health ? (
             <>
-              数据 {health.customers} 位客户
+              {health.customers ? `${health.customers} 位客户` : '等待数据'}
               <br />
-              分群 {health.segments} 个 · v{health.version}
-              <br />
-              {health.llm_enabled ? '大模型：已接入' : '大模型：未接入（规则引擎）'}
+              共 {health.segments} 个分层 · v{health.version}
             </>
           ) : (
-            '正在连接后端…'
+            '正在连接服务…'
           )}
         </div>
       </aside>
@@ -106,19 +105,30 @@ export default function App() {
         <div className="page-head">
           <h1>{current.label}</h1>
           <div className="page-head-right">
+            {health && (
+              <span className="dataset-chip" title={health.dataset_name}>
+                {isSample ? '示例数据' : '我的数据'} · {health.customers} 位客户
+              </span>
+            )}
             {page !== 'import' && (
               <button type="button" className="btn primary head-cta" onClick={() => navigate('import')}>
-                📥 导入我的数据
+                上传我的数据
               </button>
-            )}
-            {health && (
-              <span className={`badge-llm ${health.llm_enabled ? '' : 'off'}`}>
-                {health.llm_enabled ? 'LLM 在线模式' : '离线规则模式'}
-              </span>
             )}
           </div>
         </div>
-        {error && <div className="error-box">无法连接后端：{error}（请先运行 python backend/run.py）</div>}
+
+        {error && <div className="error-box">无法连接服务：{error}（请先运行 python backend/run.py）</div>}
+
+        {isSample && page !== 'import' && (
+          <div className="sample-banner">
+            正在看的是内置示例数据（iFood 营销活动客户）。
+            <button type="button" className="link-btn" onClick={() => navigate('import')}>
+              换成我自己的数据 →
+            </button>
+          </div>
+        )}
+
         <Page
           key={`${current.key}-${refreshKey}`}
           onNavigate={navigate}

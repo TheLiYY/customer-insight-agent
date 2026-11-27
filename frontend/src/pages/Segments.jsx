@@ -50,9 +50,8 @@ export default function Segments() {
         <Kpi label="分层数量" value={segs.length} suffix="层" hint="R × F × M 交叉" />
         <Kpi label="重要客户" value={num(importantCount)} suffix="人" hint={pct(importantCount / segs.reduce((s, x) => s + x.count, 0))} tone="accent" />
         <Kpi label="重要客户营收" value={pct(importantRevenue / totalRevenue)} tone="teal" hint={money(importantRevenue)} />
-        <Kpi label="人数最多" value={biggest.name} hint={`${num(biggest.count)} 人`} />
-        <Kpi label="营收贡献最高" value={topRevenue.name} hint={pct(topRevenue.revenue_ratio)} tone="amber" />
-        <Kpi label="模型口径" value="5 分位" hint="R/F/M 各自等频打分 1-5" />
+        <Kpi label="主力分层" value={topRevenue.name} hint={`${num(topRevenue.count)} 人 · 贡献 ${pct(topRevenue.revenue_ratio)} 营收`} tone="amber" />
+        <Kpi label="模型口径" value="5 分位" hint="R / F / M 各自等频打分 1-5" />
       </div>
 
       <Card title="RFM 分层结果" >
@@ -89,9 +88,15 @@ export default function Segments() {
             option={{
               tooltip: { position: 'top', formatter: (p) => `${p.data[1]} × ${p.data[0]}<br/>${num(p.data[2])} 人` },
               grid: { left: 44, right: 30, top: 20, bottom: 50 },
+              // 有格子里的数字就够了，图例隐藏但保留配色
+              visualMap: {
+                show: false,
+                min: 0,
+                max: Math.max(...data.matrix.values.flat()),
+                inRange: { color: ['#eef2ff', '#c7d5ff', '#7d9cf7', '#3b6cf6', '#1e3fa8'] },
+              },
               xAxis: { type: 'category', data: data.matrix.rows, name: 'F', ...axisStyle },
               yAxis: { type: 'category', data: data.matrix.cols, name: 'M', ...axisStyle },
-              visualMap: { min: 0, max: Math.max(...data.matrix.values.flat()), calculable: true, orient: 'horizontal', left: 'center', bottom: 0, inRange: { color: ['#f1f5ff', '#3b6cf6'] }, textStyle: { fontSize: 11 } },
               series: [
                 {
                   type: 'heatmap',

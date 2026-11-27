@@ -529,7 +529,7 @@ return () => { ro.disconnect(); chart.dispose() }
 **为什么用 subprocess 而不是直接调函数**：清洗脚本已经是一个稳定、可单独运行的入口，
 子进程调用能保证「命令行能跑 = 页面上能跑」，也避免把 numpy/pandas 的中间状态留在 Web 进程里。
 
-### 4.20 `frontend/src/pages/Import.jsx` — 导入数据页
+### 4.20 `frontend/src/pages/Import.jsx` — 我的数据页（上传 + 试读 + 应用）
 
 三段式界面：拖拽区 → 识别结果（KPI / 能力开关 / 字段映射表 / 原始数据预览）→ 应用按钮。
 多 sheet 的文件会多出一个下拉框，切换后重新调 `/inspect` 再读一遍。
