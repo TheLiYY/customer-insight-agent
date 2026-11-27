@@ -88,26 +88,13 @@ export default function Import({ onNavigate, onDataChanged }) {
     }
   }
 
-  const current = history.current
+  const uploads = history.uploads || []
 
   return (
     <div className="grid">
       <ErrorBox error={error ? { message: error } : null} />
 
-      <Card
-        title="用你自己的客户数据"
-        extra={
-          current ? (
-            <span className="quiet">
-              当前：{current.rows} 位客户 · {current.name}
-            </span>
-          ) : null
-        }
-      >
-        <p className="quiet" style={{ marginTop: 0 }}>
-          一行一位客户，或一行一笔订单都可以；列名不用改，中英文、常见叫法都能自动认出来。
-        </p>
-
+      <Card title="上传数据文件">
         <div
           className={`dropzone ${dragging ? 'dragging' : ''}`}
           onDragOver={(e) => {
@@ -121,8 +108,8 @@ export default function Import({ onNavigate, onDataChanged }) {
           tabIndex={0}
         >
           <div className="dropzone-icon">📄</div>
-          <strong>把文件拖进来，或点一下选择</strong>
-          <span className="quiet">支持 xlsx / xls / csv / tsv / json，单个文件最大 {history.limits?.max_mb || 40}MB</span>
+          <strong>选择 Excel 或 CSV 文件</strong>
+          <span className="quiet">支持 .xlsx / .xls / .csv / .tsv / .json，单个文件最大 {history.limits?.max_mb || 40}MB</span>
           <input
             ref={inputRef}
             type="file"
@@ -138,10 +125,10 @@ export default function Import({ onNavigate, onDataChanged }) {
 
         <div className="row-between" style={{ marginTop: 12 }}>
           <a className="link-quiet" href="/api/import/template" download>
-            下载数据模板（含客户宽表与订单明细两种写法）
+            下载数据模板
           </a>
-          {history.uploads && history.uploads.length > 0 && (
-            <span className="quiet">最近上传 {history.uploads.length} 个文件</span>
+          {history.uploads && uploads.length > 0 && (
+            <span className="quiet">最近上传 {uploads.length} 个文件</span>
           )}
         </div>
 
@@ -164,7 +151,7 @@ export default function Import({ onNavigate, onDataChanged }) {
 
       {inspect && (
         <>
-          <Card title="先确认一下识别结果" extra={<Tag color="#3b6cf6">{inspect.name}</Tag>}>
+          <Card title="识别结果" extra={<Tag color="#3b6cf6">{inspect.name}</Tag>}>
             <div className="kpis">
               <Kpi label="读到" value={num(inspect.raw_rows)} suffix={` 行 × ${inspect.raw_columns} 列`} hint={inspect.sheets?.length ? `sheet：${inspect.sheet}` : 'CSV / JSON'} />
               <Kpi label="整理成" value={num(inspect.output_rows)} suffix={` 位客户 × ${inspect.output_columns} 列`} hint={inspect.grain_label} />
@@ -227,7 +214,7 @@ export default function Import({ onNavigate, onDataChanged }) {
 
           <Card
             title="字段对应关系"
-            extra={<span className="quiet">认错的列，在 backend/app/core/schema.py 里加个别名即可</span>}
+            extra={<span className="quiet">列不认识时，可在 backend/app/core/schema.py 添加别名</span>}
           >
             <Table
               columns={[
@@ -260,8 +247,8 @@ export default function Import({ onNavigate, onDataChanged }) {
         </>
       )}
 
-      {history.uploads && history.uploads.length > 0 && (
-        <Card title="最近用过的文件" extra={<span className="quiet">只保留最近 {history.limits?.keep || 30} 个</span>}>
+      {history.uploads && uploads.length > 0 && (
+        <Card title="最近用过的文件" extra={<span className="quiet">最多保留 {history.limits?.keep || 30} 个</span>}>
           <Table
             columns={[
               { key: 'name', title: '文件' },

@@ -122,9 +122,9 @@ export default function App() {
 
         {isSample && page !== 'import' && (
           <div className="sample-banner">
-            正在看的是内置示例数据（iFood 营销活动客户）。
+            当前是示例数据。
             <button type="button" className="link-btn" onClick={() => navigate('import')}>
-              换成我自己的数据 →
+              换成我的数据 →
             </button>
           </div>
         )}
