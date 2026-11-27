@@ -24,6 +24,7 @@ async function request(path, init) {
 
 export const api = {
   health: () => request('/health'),
+  capabilities: () => request('/capabilities'),
   dataset: () => request('/dataset'),
   overview: () => request('/overview'),
   insights: () => request('/insights'),

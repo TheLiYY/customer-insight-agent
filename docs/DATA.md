@@ -269,11 +269,11 @@ iFood、Mall、Bank 都是这种。直接逐列映射即可。
 | 没有金额（`total_spend`） | 消费分布/品类结构/ROI 隐藏；RFM 的 M 值不准（warning 提示） |
 | 没有 `recency` | RFM 只剩 F/M 两维，分层仅供参考（warning 提示） |
 | 没有 `purchase_freq` | 用各渠道次数之和兜底；再没有就"有消费记 1 次" |
-| 没有 `response` | **响应预测页整页变成说明卡**，`GET /api/propensity` 返回 `{"available": false, "reason": "..."}`；营销方案用 0.1 基线概率 |
+| 没有 `response` | **响应预测页从导航里消失**（直接访问 URL 会回落到数据总览），`GET /api/propensity` 返回 `{"available": false, "reason": "..."}`；客户分层的「响应率」列、画像里的「活动响应率」、自动结论里的「精准触达」与响应相关指标一并隐藏；营销方案用 0.1 基线概率 |
 | 没有任何品类列 | 关联规则、品类结构隐藏，营销方案不选品 |
 | 没有 channel 列 | 渠道结构隐藏，方案默认"全渠道" |
 
-前端判断依据就是 `GET /api/capabilities`（也可以从 `/api/dataset` 的 `capabilities` 字段拿）。
+前端判断依据就是 `GET /api/capabilities`，**没有的能力对应的页面/图表/指标列直接不出现**，不做"暂时不可用"的占位提示。
 
 ---
 

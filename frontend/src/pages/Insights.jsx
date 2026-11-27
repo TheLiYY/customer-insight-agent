@@ -39,29 +39,39 @@ export default function Insights({ onNavigate }) {
   if (!data) return <Loading text="正在跑分析并生成结论…" />
 
   const c = data.counts
+  // 数据里没有的指标后端会返回 null，这里直接不显示，避免出现 0.0% / 0.000 这种误导
+  const stats = [
+    ['客户数', data.stats.customers],
+    ['大盘响应率', data.stats.response_rate != null ? `${(data.stats.response_rate * 100).toFixed(1)}%` : null],
+    ['前 20% 客户营收占比', data.stats.top20_revenue_share != null ? `${(data.stats.top20_revenue_share * 100).toFixed(1)}%` : null],
+    ['响应模型 AUC', data.stats.auc != null ? data.stats.auc.toFixed(3) : null],
+    ['头部名单提升度', data.stats.top_decile_lift != null ? `${data.stats.top_decile_lift.toFixed(2)}×` : null],
+  ].filter(([, v]) => v != null)
 
   return (
     <>
       <div className="kpi-row">
         <Kpi label="自动生成结论" value={c.total} suffix="条" hint="全部来自真实数据计算" tone="accent" />
-        <Kpi label="增长机会" value={c.opportunity} suffix="条" hint="可以直接投预算的地方" tone="teal" />
-        <Kpi label="风险预警" value={c.risk} suffix="条" hint="不处理会掉营收" tone="rose" />
-        <Kpi label="结构洞察" value={c.insight} suffix="条" hint="解释「为什么是这样」" />
+        {c.opportunity > 0 && (
+          <Kpi label="增长机会" value={c.opportunity} suffix="条" hint="可以直接投预算的地方" tone="teal" />
+        )}
+        {c.risk > 0 && <Kpi label="风险预警" value={c.risk} suffix="条" hint="不处理会掉营收" tone="rose" />}
+        {c.insight > 0 && <Kpi label="结构洞察" value={c.insight} suffix="条" hint="解释「为什么是这样」" />}
       </div>
 
       <Card title="一句话结论">
         <p style={{ fontSize: 15, lineHeight: 1.9, margin: 0 }}>{data.headline}</p>
         <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', marginTop: 14, fontSize: 12, color: '#6b7280' }}>
-          <span>客户数 {data.stats.customers}</span>
-          <span>大盘响应率 {(data.stats.response_rate * 100).toFixed(1)}%</span>
-          <span>前 20% 客户营收占比 {(data.stats.top20_revenue_share * 100).toFixed(1)}%</span>
-          <span>响应模型 AUC {data.stats.auc.toFixed(3)}</span>
-          <span>头部名单提升度 {data.stats.top_decile_lift.toFixed(2)}×</span>
+          {stats.map(([label, value]) => (
+            <span key={label}>
+              {label} {value}
+            </span>
+          ))}
         </div>
       </Card>
 
       <div className="tabs" style={{ marginBottom: 12 }}>
-        {FILTERS.map((f) => (
+        {FILTERS.filter((f) => f.key === 'all' || (c[f.key] || 0) > 0).map((f) => (
           <button
             key={f.key}
             type="button"

@@ -102,6 +102,14 @@ def build_insights(
     top20 = _top20_share(df)
     top_seg = max(segments, key=lambda s: s.get("revenue") or 0) if segments else None
     if top_seg and total_revenue > 0:
+        seg_evidence = [
+            f"前 20% 高消费客户贡献了 {_pct(top20)} 的营收（共 {customers} 人，营收 {_money(total_revenue)}）",
+            f"{top_seg['name']} 人数占比 {_pct(top_seg['ratio'])}，营收占比 {_pct(top_seg['revenue_ratio'])}",
+        ]
+        if base_rate:
+            seg_evidence.append(
+                f"该客群活动响应率 {_pct(top_seg['response_rate'])}，整体响应率 {_pct(base_rate)}"
+            )
         add(
             "价值结构",
             "insight",
@@ -112,11 +120,7 @@ def build_insights(
                 f"人均消费 {_money(top_seg['avg_spend'])}，"
                 f"是整体人均（{_money(avg_spend)}）的 {top_seg['avg_spend'] / max(avg_spend, 1):.1f} 倍。"
             ),
-            [
-                f"前 20% 高消费客户贡献了 {_pct(top20)} 的营收（共 {customers} 人，营收 {_money(total_revenue)}）",
-                f"{top_seg['name']} 人数占比 {_pct(top_seg['ratio'])}，营收占比 {_pct(top_seg['revenue_ratio'])}",
-                f"该客群活动响应率 {_pct(top_seg['response_rate'])}，整体响应率 {_pct(base_rate)}",
-            ],
+            seg_evidence,
             "对核心高价值客群做「会员等级 + 新品优先购」，不要用大额折扣，避免稀释毛利。",
             priority=1,
         )
@@ -175,20 +179,7 @@ def build_insights(
             "把营销名单按响应概率排序，先投 Top 20%，剩余预算再往下延展。",
             priority=1,
         )
-    else:
-        add(
-            "精准触达",
-            "risk",
-            "这份数据暂时做不了响应预测",
-            (prop.get("reason") or "缺少「是否响应」字段或有效样本不足。")
-            + " 没有响应标签就没法训练转化概率模型，精准名单只能退化成规则圈人。",
-            [
-                "需要一列「是否响应/是否转化」的历史结果（0/1 或 是/否），至少 60 位客户",
-                f"当前数据可用字段：{'、'.join(list(df.columns)[:12])}……",
-            ],
-            "补一列历史活动的响应结果后重跑 prepare_data.py，即可恢复响应预测与 Lift 分析。",
-            priority=1,
-        )
+    # 没有响应标签时，这一段整体跳过：没有的指标就不出现在结论里
 
     # ---------- 4. 品类结构 ----------
     if penetration:
@@ -386,10 +377,11 @@ def build_insights(
             "customers": customers,
             "total_revenue": clean(total_revenue),
             "avg_spend": clean(avg_spend),
-            "response_rate": clean(base_rate),
+            # 没有响应标签时，这几个指标本身没有意义，返回 None 让前端不显示
+            "response_rate": clean(base_rate) if base_rate else None,
             "top20_revenue_share": clean(top20),
             "dormant_rate": clean(dormant_rate),
-            "auc": clean(float((prop.get("train_metrics") or {}).get("auc") or 0)),
-            "top_decile_lift": clean(float((lift[0] if lift else {}).get("lift") or 0)),
+            "auc": clean(float((prop.get("train_metrics") or {}).get("auc") or 0)) or None,
+            "top_decile_lift": clean(float((lift[0] if lift else {}).get("lift") or 0)) or None,
         },
     }

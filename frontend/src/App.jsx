@@ -10,12 +10,13 @@ import Agent from './pages/Agent'
 import Import from './pages/Import'
 import Data from './pages/Data'
 
+// requires: 这一页依赖哪项数据能力；数据里没有对应字段时，导航里就不出现这一页
 const NAV = [
   { key: 'overview', icon: '📊', label: '数据总览', component: Overview },
-  { key: 'personas', icon: '👥', label: '客户画像', component: Personas },
-  { key: 'segments', icon: '🧩', label: '客户分层', component: Segments },
-  { key: 'propensity', icon: '🎯', label: '响应预测', component: Propensity },
-  { key: 'campaign', icon: '🚀', label: '营销方案', component: Campaign },
+  { key: 'personas', icon: '👥', label: '客户画像', component: Personas, requires: 'clustering' },
+  { key: 'segments', icon: '🧩', label: '客户分层', component: Segments, requires: 'rfm' },
+  { key: 'propensity', icon: '🎯', label: '响应预测', component: Propensity, requires: 'propensity' },
+  { key: 'campaign', icon: '🚀', label: '营销方案', component: Campaign, requires: 'campaign' },
   { key: 'insights', icon: '📌', label: '自动结论', component: Insights },
   { key: 'agent', icon: '💬', label: '智能问答', component: Agent },
   { key: 'import', icon: '📤', label: '我的数据', component: Import },
@@ -26,6 +27,7 @@ export default function App() {
   // 页面状态跟地址栏的 # 同步：刷新不丢当前页，也方便把某一页直接发给别人
   const [page, setPage] = useState(() => window.location.hash.replace(/^#\/?/, '') || 'overview')
   const [health, setHealth] = useState(null)
+  const [caps, setCaps] = useState(null)
   const [error, setError] = useState('')
   const [refreshKey, setRefreshKey] = useState(0)
 
@@ -37,6 +39,10 @@ export default function App() {
         setError('')
       })
       .catch((err) => setError(err.message))
+    api
+      .capabilities()
+      .then(setCaps)
+      .catch(() => setCaps(null))
   }
 
   useEffect(() => {
@@ -60,9 +66,19 @@ export default function App() {
     setRefreshKey((k) => k + 1)
   }
 
-  const current = NAV.find((n) => n.key === page) || NAV[0]
+  // 数据不支持的能力，对应页面直接从导航里去掉；直接输 URL 进来的也回落到总览
+  const navItems = NAV.filter((item) => !item.requires || !caps || caps[item.requires] !== false)
+  const allowed = navItems.some((n) => n.key === page)
+  const current = navItems.find((n) => n.key === page) || navItems[0]
   const Page = current.component
   const isSample = health && health.dataset_preset && health.dataset_preset !== 'custom'
+
+  useEffect(() => {
+    if (caps && !allowed && page !== navItems[0].key) {
+      setPage(navItems[0].key)
+      window.location.hash = `#/${navItems[0].key}`
+    }
+  }, [caps, allowed, page, navItems])
 
   return (
     <div className="shell">
@@ -75,7 +91,7 @@ export default function App() {
           </div>
         </div>
         <nav className="nav">
-          {NAV.map((item) => (
+          {navItems.map((item) => (
             <button
               key={item.key}
               type="button"

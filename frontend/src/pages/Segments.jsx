@@ -7,15 +7,18 @@ import { PALETTE, axisStyle, money, num, pct } from '../lib/format'
 export default function Segments() {
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
+  const [caps, setCaps] = useState(null)
 
   useEffect(() => {
     api.segments().then(setData).catch(setError)
+    api.capabilities().then(setCaps).catch(() => setCaps(null))
   }, [])
 
   if (error) return <ErrorBox error={error} />
   if (!data) return <Loading text="正在计算 RFM 分层…" />
 
   const segs = data.segments
+  const hasResponse = !caps || caps.has_response !== false
   const important = segs.filter((s) => s.name.startsWith('重要'))
   const importantCount = important.reduce((s, x) => s + x.count, 0)
   const importantRevenue = important.reduce((s, x) => s + x.revenue, 0)
@@ -40,7 +43,8 @@ export default function Segments() {
     { key: 'avg_spend', title: '人均消费', align: 'right', render: (r) => money(r.avg_spend) },
     { key: 'avg_freq', title: '人均次数', align: 'right', render: (r) => num(r.avg_freq, 1) },
     { key: 'avg_recency', title: '最近购买', align: 'right', render: (r) => `${num(r.avg_recency, 0)} 天前` },
-    { key: 'response_rate', title: '响应率', align: 'right', render: (r) => pct(r.response_rate) },
+    // 数据里没有「是否响应」标签时，这一列没有意义，直接不显示
+    ...(hasResponse ? [{ key: 'response_rate', title: '响应率', align: 'right', render: (r) => pct(r.response_rate) }] : []),
     { key: 'score', title: 'R / F / M', align: 'center', render: (r) => `${num(r.avg_r, 1)} / ${num(r.avg_f, 1)} / ${num(r.avg_m, 1)}` },
   ]
 

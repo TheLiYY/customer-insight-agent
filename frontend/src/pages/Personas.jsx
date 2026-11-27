@@ -100,10 +100,12 @@ export default function Personas() {
                 <span>最近购买距今</span>
                 <strong>{num(value.avg_recency, 0)} 天</strong>
               </div>
-              <div className="stat">
-                <span>活动响应率</span>
-                <strong>{pct(p.behavior.response_rate)}</strong>
-              </div>
+              {p.behavior.response_rate != null && (
+                <div className="stat">
+                  <span>活动响应率</span>
+                  <strong>{pct(p.behavior.response_rate)}</strong>
+                </div>
+              )}
               <div className="stat">
                 <span>折扣依赖度</span>
                 <strong>{pct(p.behavior.discount_dependence)}</strong>
