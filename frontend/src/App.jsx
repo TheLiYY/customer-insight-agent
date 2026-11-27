@@ -79,6 +79,7 @@ export default function App() {
               key={item.key}
               type="button"
               className={page === item.key ? 'active' : ''}
+              title={item.label}
               onClick={() => navigate(item.key)}
             >
               <span className="nav-icon">{item.icon}</span>
@@ -104,11 +105,18 @@ export default function App() {
       <main className="main">
         <div className="page-head">
           <h1>{current.label}</h1>
-          {health && (
-            <span className={`badge-llm ${health.llm_enabled ? '' : 'off'}`}>
-              {health.llm_enabled ? 'LLM 在线模式' : '离线规则模式'}
-            </span>
-          )}
+          <div className="page-head-right">
+            {page !== 'import' && (
+              <button type="button" className="btn primary head-cta" onClick={() => navigate('import')}>
+                📥 导入我的数据
+              </button>
+            )}
+            {health && (
+              <span className={`badge-llm ${health.llm_enabled ? '' : 'off'}`}>
+                {health.llm_enabled ? 'LLM 在线模式' : '离线规则模式'}
+              </span>
+            )}
+          </div>
         </div>
         {error && <div className="error-box">无法连接后端：{error}（请先运行 python backend/run.py）</div>}
         <Page
