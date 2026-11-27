@@ -17,8 +17,8 @@
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │  浏览器  React + Vite + ECharts（frontend/）                  │
-│  8 个页面：总览 / 自动结论 / 画像 / RFM / 响应预测 / 方案 /   │
-│            Agent 对话 / 数据说明                              │
+│  9 个页面：总览 / 自动结论 / 画像 / RFM / 响应预测 / 方案 /   │
+│            导入数据 / Agent 对话 / 数据说明                   │
 └───────────────────────────┬──────────────────────────────────┘
                             │ HTTP  JSON（/api/*）
 ┌───────────────────────────▼──────────────────────────────────┐
@@ -96,7 +96,7 @@ customer-insight-agent/
 │       ├── lib/format.js          # 数字/百分比/金额格式化 + 调色板
 │       ├── components/Chart.jsx   # ECharts 封装（含 ResizeObserver + dispose）
 │       ├── components/ui.jsx      # Card / Kpi / Table / Tag / Tabs
-│       └── pages/*.jsx            # 8 个页面
+│       └── pages/*.jsx            # 9 个页面（含导入数据）
 ├── scripts/
 │   ├── prepare_data.py            # 下载(或 --xlsx 读本地 Excel) + 清洗 + 生成 Excel/CSV/meta
 │   ├── export_report.py           # 生成分析报告 Excel（9 个 sheet）
@@ -430,7 +430,7 @@ def build_insights(df, kpis, segments, personas, prop, rules, penetration) -> di
 `_lock` 目前只用于 `reload()`，因为懒加载的计算是幂等的（重复算一次结果一样）。
 数据量大到需要严格单例计算时，把 `if self._x is None` 换成双检锁即可。
 
-### 4.13 `api/routes.py` — 14 个接口
+### 4.13 `api/routes.py` — 14 个分析接口
 
 全部是「取 store 的某个 property → 组装成 JSON」，几乎不含逻辑，所以很好读。
 唯一有业务的是 `GET /api/customers`（分页 + 筛选 + 排序）和
@@ -510,6 +510,32 @@ return () => { ro.disconnect(); chart.dispose() }
 
 **关键点**：页面里没有任何计算，所有文字都来自 `/api/insights`。
 这样「结论怎么来的」永远只有一个地方需要维护（后端 `insights.py`）。
+
+### 4.19 `core/loader.py` + `api/imports.py` — 上传自己的数据
+
+这两块是「换数据」功能的全部后端代码，职责分得很干净：
+
+- **`core/loader.py`**：只管「把文件变成一个 DataFrame」。Excel 用 openpyxl，JSON 用 `read_json`，
+  CSV 先嗅探分隔符（分号/制表/逗号），再依次尝试 `utf-8` → `gbk`，失败时退回 `sep=None, engine="python"`。
+  命令行的 `--file` 和页面上的拖拽上传都走这一个函数，所以两边对同一个文件的解析结果一定一致。
+- **`api/imports.py`**：只管 HTTP 与生命周期。
+  - `POST /inspect`：存一份临时上传 → `schema.detect()` + `schema.build_customers()` → 返回「会被怎么理解」，
+    **不写 processed/，也不碰 store**，所以试读再多次，线上数据也不会变。
+  - `POST /apply`：用 `subprocess` 调一次 `scripts/prepare_data.py --file ...`，成功后再 `store.reload()`，
+    然后在后台线程里预热 overview/cluster/propensity/insights，避免用户点进页面时等首屏计算。
+  - 上传文件落在 `backend/data/uploads/`，超过 30 个自动清理最旧的；文件名做了 `_safe_name()` 清洗，
+    防目录穿越。
+
+**为什么用 subprocess 而不是直接调函数**：清洗脚本已经是一个稳定、可单独运行的入口，
+子进程调用能保证「命令行能跑 = 页面上能跑」，也避免把 numpy/pandas 的中间状态留在 Web 进程里。
+
+### 4.20 `frontend/src/pages/Import.jsx` — 导入数据页
+
+三段式界面：拖拽区 → 识别结果（KPI / 能力开关 / 字段映射表 / 原始数据预览）→ 应用按钮。
+多 sheet 的文件会多出一个下拉框，切换后重新调 `/inspect` 再读一遍。
+
+**关键点**：`apply` 成功后会调用父组件的 `onDataChanged()`，它做两件事——刷新侧边栏统计、
+把页面 `key` 加一强制所有页面重新挂载（因为每个页面都是「挂载时取一次数」，重挂载就等于重新取数）。
 
 ---
 
@@ -598,7 +624,7 @@ python scripts/export_report.py
 
 1. **`core/` 不 import FastAPI**：让核心算法可以脱离 Web 单独跑（脚本、Notebook、定时任务都能复用）。
 2. **算法用 sklearn / mlxtend，不手写**：可维护、有文档、能解释，是工程实践的正确选择。
-3. **不做前端状态管理库**：8 个页面、每个页面一次 fetch，`useState` 足够；引入 Redux 只会增加理解成本。
+3. **不做前端状态管理库**：9 个页面、每个页面一次 fetch，`useState` 足够；引入 Redux 只会增加理解成本。
 4. **不做数据库**：2021 行 CSV 读取耗时 <100ms，上数据库反而增加部署复杂度。数据涨到十万级时换 DuckDB 即可。
 5. **Agent 双模式 + 规则兜底**：演示稳定性的优先级高于"看起来高级"。
 6. **自动结论文案写死在代码里**：保证每条结论可追溯到数字，不会出现"大模型编了个不存在的 30%"。

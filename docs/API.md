@@ -193,7 +193,7 @@ python scripts/export_openapi.py
     "severity": "insight",
     "severity_label": "结构洞察",
     "title": "重要价值客户是营收主力",
-    "conclusion": "715 位重要价值客户只占 35.6%，却贡献了 56.9% 的营收。",
+    "conclusion": "715 位重要价值客户只占 35.4%，却贡献了 56.3% 的营收。",
     "evidence": ["人均消费 902.6 元，是全量均值的 1.6 倍", "…"],
     "action": "对这群人做 VIP 维护，不要用大额折扣换短期成交。"
   }],
@@ -514,3 +514,70 @@ python scripts/export_openapi.py
 ```
 
 前端「快捷问题」按钮的数据来源。
+
+---
+
+# 数据导入（上传自己的客户表）
+
+这几个接口对应页面上「导入数据」的完整流程：**先 inspect 试读，确认识别无误后再 apply 真正切换**。apply 内部会调用 `scripts/prepare_data.py` 重算，然后刷新服务端缓存，所以不需要重启后端。
+
+## POST /api/import/inspect
+
+`multipart/form-data`：`file`（必填，`.xlsx/.xlsm/.xls/.csv/.tsv/.txt/.json`，≤ 40MB）+ `sheet`（可选，多 sheet 时指定）。
+
+只解析、**不落盘、不影响当前数据**，用来告诉用户「这份表会被怎么理解」。
+
+```json
+{
+  "file": "20261127_112001_客户名单.xlsx", "name": "客户名单.xlsx", "size": 111654,
+  "sheets": ["客户表"], "sheet": "客户表",
+  "raw_rows": 800, "raw_columns": 38, "dropped_duplicates": 23,
+  "grain": "customer", "grain_label": "客户级宽表", "matched": 11,
+  "mapping": [{ "target": "income", "label": "收入", "source": "年收入", "confidence": "中", "how": "列名包含别名" }],
+  "output_rows": 777, "output_columns": 25, "output_columns_list": ["customer_id", "age"],
+  "categories": [{ "key": "mnt_wines", "name": "葡萄酒" }],
+  "channels": [{ "key": "num_web", "name": "线上商城" }],
+  "capabilities": { "has_income": true, "has_monetary": true, "propensity": true },
+  "warnings": ["缺少「购买频次」，已用各渠道下单次数之和代替"],
+  "preview": { "columns": ["年龄", "年收入"], "rows": [[35, 52000]] },
+  "output_preview": { "columns": ["age", "income"], "rows": [[35, 52000]] }
+}
+```
+
+## POST /api/import/apply
+
+```json
+{ "file": "20261127_112001_客户名单.xlsx", "sheet": "客户表", "sep": null, "encoding": null }
+```
+
+执行清洗并切换数据源，返回 `{ "ok": true, "took_ms": 2067, "log": ["[ok] ..."], "dataset": { ...与 /api/dataset 同结构... } }`。清洗失败返回 400，`detail` 里带日志尾部，方便定位是哪一列的问题。
+
+## POST /api/import/preset
+
+```json
+{ "dataset": "ifood" }
+```
+
+切回内置数据集，`dataset` 取 `ifood` / `mall` / `bank`，返回结构与 apply 相同。
+
+## GET /api/import/presets
+
+```json
+{ "presets": [
+  { "key": "ifood", "label": "iFood 营销活动客户数据（2205 行）" },
+  { "key": "mall", "label": "商场会员消费评分（200 行）" },
+  { "key": "bank", "label": "银行电话营销名单（4119 行）" }
+] }
+```
+
+## GET /api/import/history
+
+```json
+{
+  "uploads": [{ "file": "20261127_112001_客户名单.xlsx", "name": "客户名单.xlsx", "size": 111654, "uploaded_at": "2026-11-27 11:20", "sheets": ["客户表"] }],
+  "current": { "name": "iFood 营销活动客户数据" },
+  "limits": { "max_mb": 40, "keep": 30 }
+}
+```
+
+最近上传文件列表（服务端只保留最近 30 个，存在 `backend/data/uploads/`，已被 `.gitignore` 排除）。
