@@ -46,3 +46,7 @@ dist-bundle.zip
 
 # 上传文件时同步落盘的原始副本（每次导入都会重新生成）
 backend/data/raw/source_raw.csv
+
+# external test datasets (re-download with scripts/fetch_sample_data.py)
+test-data/
+

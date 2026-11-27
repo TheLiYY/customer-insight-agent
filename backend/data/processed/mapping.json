@@ -97,17 +97,17 @@
     "num_web": {
       "source": "NumWebPurchases",
       "label": "线上商城",
-      "why": "列名含「web」"
+      "why": "列名是「web」"
     },
     "num_catalog": {
       "source": "NumCatalogPurchases",
       "label": "邮购目录",
-      "why": "列名含「catalog」"
+      "why": "列名是「catalog」"
     },
     "num_store": {
       "source": "NumStorePurchases",
       "label": "线下门店",
-      "why": "列名含「store」"
+      "why": "列名是「store」"
     }
   },
   "unused_columns": [

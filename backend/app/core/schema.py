@@ -39,6 +39,8 @@ STANDARD_FIELDS: dict[str, dict[str, Any]] = {
             "custid", "cust_id", "clientid", "client_id", "customerkey", "customernumber",
             "客户id", "客户编号", "客户号", "用户id", "用户编号", "会员id", "会员号", "顾客编号", "编号",
             "会员卡号", "卡号", "客户卡号", "会员编号", "顾客号", "客户编码", "会员编码", "买家id", "买家编号",
+            # 很多零售/CRM 导出没有真正的编号列，客户名就是唯一键（Superstore、部分门店系统）
+            "customername", "customer_name", "客户姓名", "客户名称", "会员姓名", "会员名称", "顾客姓名", "买家姓名",
         ],
         "required": True,
     },
@@ -112,7 +114,7 @@ STANDARD_FIELDS: dict[str, dict[str, Any]] = {
             "lifetimevalue", "spend", "revenue", "sales", "累计消费", "消费额", "消费金额",
             "总消费", "累计金额", "交易金额", "金额", "消费总额", "累计消费额", "累计消费金额",
             "成交金额", "成交额", "支付金额", "实付金额", "累计成交", "累计成交额", "销售额",
-            "总金额", "消费合计", "订单总额",
+            "总金额", "消费合计", "订单总额", "totalcharges", "累计消费总额",
         ],
     },
     "value_score": {
@@ -152,9 +154,10 @@ STANDARD_FIELDS: dict[str, dict[str, Any]] = {
         "label": "活动响应",
         "type": "binary",
         "desc": "是否响应了营销活动：1=响应/购买，0=未响应",
+        # 注意：churn/流失 是「离开」而不是「响应活动」，方向相反，不能当正样本标签
         "aliases": [
             "response", "y", "target", "converted", "label", "clicked", "accepted",
-            "churn", "是否响应", "响应", "是否购买", "是否转化", "是否点击", "购买意向",
+            "是否响应", "响应", "是否购买", "是否转化", "是否点击", "购买意向",
         ],
     },
     "complain": {
@@ -183,7 +186,11 @@ TRANSACTION_FIELDS: dict[str, dict[str, Any]] = {
         "type": "number",
         "aliases": ["amount", "totalamount", "salesamount", "lineamount", "revenue", "订单金额", "金额", "小计", "交易金额"],
     },
-    "quantity": {"label": "数量", "type": "number", "aliases": ["quantity", "qty", "数量", "件数", "购买数量"]},
+    "quantity": {
+        "label": "数量",
+        "type": "number",
+        "aliases": ["quantity", "qty", "orderquantity", "购买数量", "数量", "件数", "订单数量"],
+    },
     "unit_price": {"label": "单价", "type": "number", "aliases": ["unitprice", "price", "单价", "价格"]},
     "product_category": {
         "label": "商品品类",
@@ -362,17 +369,31 @@ def _looks_like_category(col: str) -> tuple[str | None, str]:
     return None, ""
 
 
+_CHANNEL_SUFFIXES = {
+    "", "purchase", "purchases", "order", "orders", "count", "counts", "num", "times",
+    "visit", "visits", "amount", "amounts", "transaction", "transactions", "sales", "cnt",
+}
+
+
 def _looks_like_channel(col: str) -> tuple[str | None, str]:
     norm = normalize_name(col)
-    if "num" not in norm and "count" not in norm and "渠道" not in norm:
-        # 渠道列通常是 num_web / 渠道A 这种，纯 "online" 也可能是标签列，交给数值校验
-        pass
+    flat = norm.replace("_", "")
     for label, keys in CHANNEL_KEYWORDS.items():
         for key in keys:
-            if normalize_name(key) in norm:
+            k = normalize_name(key).replace("_", "")
+            if not k:
+                continue
+            # 只认「渠道词打头/结尾」的列：num_web / webpurchases 这种算渠道，
+            # online_security 这种只是名字里带 online，不算
+            if flat == k or flat.startswith(f"num{k}") or flat.endswith(f"{k}num") or flat.endswith(f"{k}count"):
+                return label, f"列名是「{key}」"
+            # webpurchases / storeorders 这种：渠道词后面只能跟「次数/订单」这类词，
+            # 否则 online_security 会被误当成线上渠道
+            if len(k) >= 4 and flat.startswith(k) and flat[len(k):] in _CHANNEL_SUFFIXES:
                 return label, f"列名含「{key}」"
     for hint in CHANNEL_NAME_HINTS:
-        if normalize_name(hint) in norm:
+        h = normalize_name(hint).replace("_", "")
+        if h in flat:
             return "渠道", f"列名含「{hint}」"
     return None, ""
 
@@ -400,8 +421,12 @@ def detect(df: pd.DataFrame) -> dict[str, Any]:
             continue
         if spec["type"] == "binary" and not (_is_numeric(df[col]) or _is_binary_like(df[col])):
             continue
-        if key == "customer_id" and df[col].nunique() < max(2, int(len(df) * 0.05)):
-            # 只有 5% 的不同值，不可能是客户编号
+        if key == "customer_id" and df[col].nunique() < max(2, int(len(df) * 0.05)) and score < 3:
+            # 弱匹配且只有 5% 的不同值 → 不可能是客户编号（列名叫得准的不受这个限制，
+            # 因为订单明细里客户数远小于行数，比如 54 万行只有 4 千个客户）
+            continue
+        if key in ("num_deals", "purchase_freq", "children") and not _is_count_like(df[col]):
+            # 计数类字段必须是整数：Discount(0~0.8 的折扣率) 这种不能被当成「折扣次数」
             continue
         mapping[key] = {"source": col, "score": score, "confidence": {3: "高", 2: "中", 1: "低"}[score]}
         taken.add(col)
@@ -443,7 +468,7 @@ def detect(df: pd.DataFrame) -> dict[str, Any]:
     for col in df.columns:
         if col in taken or not _is_numeric(df[col]):
             continue
-        if df[col].nunique(dropna=True) <= 1 or float(df[col].fillna(0).mean()) < 1.0:
+        if df[col].nunique(dropna=True) <= 1 or float(_to_number(df[col]).fillna(0).mean()) < 1.0:
             continue
         label, why = _looks_like_category(col)
         if label:
@@ -458,7 +483,7 @@ def detect(df: pd.DataFrame) -> dict[str, Any]:
     for col in df.columns:
         if col in taken or not _is_numeric(df[col]):
             continue
-        if df[col].nunique(dropna=True) <= 1 or float(df[col].fillna(0).mean()) < 0.5:
+        if df[col].nunique(dropna=True) <= 1 or float(_to_number(df[col]).fillna(0).mean()) < 0.5:
             continue
         label, why = _looks_like_channel(col)
         if label:
@@ -476,7 +501,11 @@ def detect(df: pd.DataFrame) -> dict[str, Any]:
             continue
         values = df[col].dropna().astype(str).str.strip()
         unique = [v for v in values.unique().tolist() if v]
-        if not unique or len(unique) > 12:
+        # 至少 3 个取值：Yes/No 这种布尔列是「有没有这项服务」，不是渠道
+        if not unique or len(unique) < 3 or len(unique) > 12:
+            continue
+        lowered = {v.lower() for v in unique}
+        if lowered <= {"yes", "no", "y", "n", "是", "否", "true", "false"}:
             continue
         hits = sum(
             1
@@ -554,6 +583,14 @@ def _to_number(series: pd.Series) -> pd.Series:
     mult = mult.mask(text.str.endswith("千").fillna(False), 1e3)
     num = pd.to_numeric(text.str.rstrip("万千"), errors="coerce")
     return num * mult
+
+
+def _is_count_like(series: pd.Series) -> bool:
+    """计数类字段应该基本都是非负整数；折扣率(0~0.8)、金额这类连续值不能算次数。"""
+    values = _to_number(series).dropna()
+    if values.empty:
+        return False
+    return bool(values.ge(0).mean() >= 0.98 and (values.round() - values).abs().le(1e-6).mean() >= 0.9)
 
 
 _TRUE_TOKENS = {"1", "y", "yes", "true", "t", "success", "successful", "是", "已购买", "购买", "响应", "正样本", "churn", "流失"}

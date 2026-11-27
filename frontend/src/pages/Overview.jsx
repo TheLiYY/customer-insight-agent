@@ -44,7 +44,7 @@ export default function Overview() {
         ) : null}
       </div>
 
-      <div className="grid grid-2">
+      <div className="grid grid-auto">
         {has(data.age) ? (
           <Card title="年龄结构" >
             <Chart
@@ -157,16 +157,16 @@ export default function Overview() {
       </div>
 
       {has(data.category) || has(data.channel) ? (
-        <div className="grid grid-2">
+        <div className="grid grid-auto">
           {has(data.category) ? (
             <Card title="品类消费结构" >
               <Chart
                 height={260}
                 option={{
-                  grid: { left: 70, right: 40, top: 16, bottom: 24 },
+                  grid: { left: 132, right: 78, top: 16, bottom: 24 },
                   tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
                   xAxis: { type: 'value', ...axisStyle },
-                  yAxis: { type: 'category', data: data.category.map((d) => d.name).reverse(), ...axisStyle },
+                  yAxis: { type: 'category', data: data.category.map((d) => d.name).reverse(), ...axisStyle, axisLabel: { ...axisStyle.axisLabel, width: 120, overflow: 'truncate' } },
                   series: [
                     {
                       type: 'bar',
@@ -211,7 +211,7 @@ export default function Overview() {
         </div>
       ) : null}
 
-      <div className="grid grid-2">
+      <div className="grid grid-auto">
         {has(data.response_by_age) ? (
           <Card title="各年龄段活动响应率" >
             <Chart
@@ -268,7 +268,7 @@ export default function Overview() {
       {showCorr ? (
         <Card title="核心指标相关性" >
           <Chart
-            height={430}
+            height={Math.max(220, 90 + (data.correlation?.x?.length || 0) * 46)}
             option={{
               tooltip: {
                 position: 'top',

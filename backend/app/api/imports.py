@@ -1,4 +1,4 @@
-"""数据导入接口：在网页上直接上传一份客户表格，整套分析立刻换成这份数据。
+﻿"""数据导入接口：在网页上直接上传一份客户表格，整套分析立刻换成这份数据。
 
 流程分两步，故意的：
     1. POST /api/import/inspect  —— 先「试读」：只解析不落盘，把自动识别结果、
@@ -37,7 +37,7 @@ from ..core.store import store
 router = APIRouter(prefix="/api/import", tags=["数据导入"])
 
 UPLOADS_DIR = DATA_DIR / "uploads"
-MAX_BYTES = 40 * 1024 * 1024  # 40MB，客户级宽表足够用了
+MAX_BYTES = 64 * 1024 * 1024  # 64MB，够装十几万行的订单明细
 KEEP_FILES = 30
 _LOCK = threading.Lock()  # 同一时间只允许一个导入任务，避免两次重建互相覆盖
 

@@ -295,21 +295,21 @@
           "label": "线上商城",
           "source": "NumWebPurchases",
           "confidence": "高",
-          "how": "渠道识别：列名含「web」"
+          "how": "渠道识别：列名是「web」"
         },
         {
           "target": "num_catalog",
           "label": "邮购目录",
           "source": "NumCatalogPurchases",
           "confidence": "高",
-          "how": "渠道识别：列名含「catalog」"
+          "how": "渠道识别：列名是「catalog」"
         },
         {
           "target": "num_store",
           "label": "线下门店",
           "source": "NumStorePurchases",
           "confidence": "高",
-          "how": "渠道识别：列名含「store」"
+          "how": "渠道识别：列名是「store」"
         }
       ],
       "unused_columns": [
