@@ -9,7 +9,17 @@
 
 ## A. 临时隧道（cloudflared，零注册）
 
-前置：本机后端 8000 + 带口令的 nginx 8090 在跑。
+一条命令搞定（会自动拉起后端、8090 的对外 nginx 和隧道，并把地址写进 `.tmp\public-url.txt`）：
+
+```powershell
+scripts\public-demo-start.ps1          # 启动并打印 https://xxx.trycloudflare.com
+scripts\public-demo-start.ps1 -Restart # 地址卡住/失效时强制重开（地址会变）
+scripts\public-demo-stop.ps1           # 停掉隧道与 8090
+```
+
+默认**不要求口令**（basic auth 在 SPA 子资源上会反复弹框），改由 nginx 对 `/api/import/*` 限流（6 次/分钟、突发 3）＋ 上传上限 24MB 兜底。要口令就把 `deploy/nginx.public.conf` 里 `auth_basic`/`auth_basic_user_file` 两行取消注释，并用 `openssl passwd -apr1 <密码> > deploy\.htpasswd` 生成（该文件不入库）。
+
+手工步骤（脚本做了一样的事）：
 
 ```powershell
 # 1) 起带口令的 nginx（监听 8090，口令文件 deploy\.htpasswd）
