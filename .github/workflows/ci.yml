@@ -85,6 +85,9 @@ jobs:
       - name: 构建前端镜像
         run: docker build -f deploy/Dockerfile.web -t customer-insight-web:test .
 
+      - name: 构建单容器镜像（Render/云平台部署用）
+        run: docker build -f deploy/Dockerfile.app -t custlens-app:test .
+
       - name: 起容器并探活
         run: |
           cp deploy/docker-compose.bundle.yml docker-compose.ci.yml

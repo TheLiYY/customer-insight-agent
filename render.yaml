@@ -1,0 +1,24 @@
+# Render 一键部署蓝图（https://render.com/docs/blueprint-spec）
+#
+# 用法：
+#   1. 注册 Render，用 GitHub 授权登录（无需信用卡即可用 free 实例）
+#   2. New → Blueprint → 选 TheLiYY/customer-insight-agent 仓库
+#   3. Render 读到本文件，自动构建 deploy/Dockerfile.app 并给出 https://xxx.onrender.com
+#
+# 注意：free 实例 15 分钟无访问会休眠，首次唤醒约 30-60 秒。
+
+services:
+  - type: web
+    name: custlens
+    runtime: docker
+    dockerfilePath: ./deploy/Dockerfile.app
+    dockerContext: .
+    plan: free
+    region: singapore
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: TZ
+        value: Asia/Shanghai
+      - key: PYTHONUNBUFFERED
+        value: "1"

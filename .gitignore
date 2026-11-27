@@ -49,4 +49,4 @@ backend/data/raw/source_raw.csv
 
 # external test datasets (re-download with scripts/fetch_sample_data.py)
 test-data/
-
+deploy/.htpasswd
