@@ -23,7 +23,9 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from openpyxl.styles import Font, PatternFill
+from openpyxl.utils import get_column_letter
+from fastapi import APIRouter, File, Form, HTTPException, Response, UploadFile
 from pydantic import BaseModel
 
 from ..core import schema as contract
@@ -242,7 +244,8 @@ class ApplyRequest(BaseModel):
 def apply(req: ApplyRequest) -> dict[str, Any]:
     """确认导入：重建标准表 → 刷新所有分析 → 返回新数据集概况。"""
     path = _resolve(req.file)
-    args = ["--file", str(path)]
+    title = path.name.split("_", 2)[-1] if "_" in path.name else path.name
+    args = ["--file", str(path), "--title", title]
     if req.sheet:
         args += ["--sheet", req.sheet]
     if req.sep:
@@ -254,6 +257,73 @@ def apply(req: ApplyRequest) -> dict[str, Any]:
         result = _run_prepare(args)
         summary = _refresh()
     return {"ok": True, **result, "dataset": summary}
+
+
+# ---------------------------------------------------------------- 模板下载
+TEMPLATE_HEADERS = {
+    "客户级宽表": [
+        "客户编号", "客户姓名", "年龄", "性别", "收入", "学历", "婚姻状况", "子女数",
+        "最近消费日期", "注册日期", "累计消费", "购买次数", "优惠次数", "月访问次数",
+        "是否响应", "是否投诉",
+    ],
+    "订单明细": [
+        "订单号", "客户编号", "下单时间", "订单金额", "数量", "单价", "商品品类", "渠道", "年龄", "性别",
+    ],
+}
+
+
+@router.get("/template")
+def download_template() -> Response:
+    """下载一份字段模板（xlsx）。
+
+    真实客户数据通常不是这个格式，这个模板的作用是「告诉用户哪些字段有用、长什么样」，
+    用户可以照着改自己的表头，也可以完全不用它——系统是自动识别列名的。
+    """
+    from io import BytesIO
+
+    from openpyxl import Workbook
+
+    wb = Workbook()
+    first = True
+    for title, headers in TEMPLATE_HEADERS.items():
+        ws = wb.active if first else wb.create_sheet()
+        first = False
+        ws.title = title
+        ws.append(headers)
+        for cell in ws[1]:
+            cell.font = Font(bold=True)
+            cell.fill = PatternFill("solid", fgColor="E8EEFF")
+        if title == "客户级宽表":
+            ws.append([
+                "C0001", "张三", 34, "女", 18000, "本科", "已婚", 1,
+                "2025-11-02", "2023-03-18", 5280.5, 12, 3, 9, 1, 0,
+            ])
+        else:
+            ws.append(["SO20251102001", "C0001", "2025-11-02", 399.0, 2, 199.5, "葡萄酒", "线上商城", 34, "女"])
+        for idx, col in enumerate(headers, start=1):
+            ws.column_dimensions[get_column_letter(idx)].width = max(10, min(22, len(col) * 2.4))
+
+    notes = wb.create_sheet("填写说明")
+    for line in [
+        ["CustLens 数据模板说明"],
+        ["1", "两张表二选一：一张客户级宽表（一行一个客户），或一张订单明细（一行一笔订单，系统自动按客户汇总）。"],
+        ["2", "列名可以不一样：中英文、带空格、常见叫法（收入/年收入/月薪、最近消费时间/上次购买时间）都能自动认出来。"],
+        ["3", "必备：能定位到客户的编号列。有金额或消费次数，才能做 RFM 与价值分层。"],
+        ["4", "想要「响应预测」：需要一列历史活动结果（是否响应/是否购买/y、yes/no）。没有这一列，其他分析照常可用。"],
+        ["5", "日期列请写成 2025-11-02 或 2025/11/2；金额可以带 ¥ 和千分位，系统会自动清洗。"],
+        ["6", "手机号、姓名、地址这类隐私列可以保留，系统不会把它们用于建模，也不会上传到任何第三方。"],
+    ]:
+        notes.append(line)
+    notes.column_dimensions["A"].width = 8
+    notes.column_dimensions["B"].width = 110
+
+    buffer = BytesIO()
+    wb.save(buffer)
+    return Response(
+        content=buffer.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": 'attachment; filename="custlens-data-template.xlsx"'},
+    )
 
 
 # ---------------------------------------------------------------- 演示数据 / 重置

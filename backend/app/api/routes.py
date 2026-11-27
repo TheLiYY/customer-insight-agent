@@ -18,11 +18,14 @@ router = APIRouter(prefix="/api")
 # ---------------------------------------------------------------- 基础信息
 @router.get("/health")
 def health() -> dict[str, Any]:
+    meta = store.meta
     return {
         "status": "ok",
         "app": settings.app_name,
         "version": settings.version,
         "llm_enabled": settings.llm_enabled,
+        "dataset_name": meta.get("name") or meta.get("source", ""),
+        "dataset_preset": meta.get("preset", "custom"),
         **store.status(),
     }
 
