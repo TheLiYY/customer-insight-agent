@@ -123,24 +123,15 @@ def download(preset: dict) -> pd.DataFrame:
 
 
 def load_any(path: str, sheet: str | None, sep: str | None, encoding: str | None) -> pd.DataFrame:
-    """读取本地文件：支持 csv / tsv / txt / xlsx / xls / json。"""
+    """读取本地文件：支持 csv / tsv / txt / xlsx / xls / json（读取细节见 core/loader.py）。"""
+    from app.core.loader import read_any
+
     p = Path(path)
     if not p.exists():
         raise SystemExit(f"文件不存在：{p}")
-    suffix = p.suffix.lower()
-    if suffix in (".xlsx", ".xls", ".xlsm"):
-        frame = pd.read_excel(p, sheet_name=sheet or 0, engine="openpyxl")
-    elif suffix == ".json":
-        frame = pd.read_json(p)
-    else:
-        if sep is None:
-            head = p.read_text(encoding=encoding or "utf-8", errors="ignore")[:4096]
-            sep = ";" if head.count(";") > head.count(",") else ("\t" if head.count("\t") > head.count(",") else ",")
-        try:
-            frame = pd.read_csv(p, sep=sep, encoding=encoding or "utf-8")
-        except UnicodeDecodeError:
-            frame = pd.read_csv(p, sep=sep, encoding="gbk")
-    print(f"[ok] 已读取 {p.name}：{len(frame)} 行 × {len(frame.columns)} 列（分隔符 {sep or '默认'}）")
+    frame = read_any(p, sheet=sheet, sep=sep, encoding=encoding)
+    used_sep = sep or ("" if p.suffix.lower() in (".xlsx", ".xls", ".xlsm", ".json") else "自动判断")
+    print(f"[ok] 已读取 {p.name}：{len(frame)} 行 × {len(frame.columns)} 列（分隔符 {used_sep or '—'}）")
     return frame
 
 

@@ -53,4 +53,25 @@ export const api = {
       body: JSON.stringify({ message, history }),
     }),
   suggestions: () => request('/agent/suggestions'),
+  // 数据导入：先试读（不上线）→ 用户确认后再应用
+  importPresets: () => request('/import/presets'),
+  importHistory: () => request('/import/history'),
+  importInspect: (file, sheet) => {
+    const form = new FormData()
+    form.append('file', file)
+    if (sheet) form.append('sheet', sheet)
+    return request('/import/inspect', { method: 'POST', body: form })
+  },
+  importApply: (payload) =>
+    request('/import/apply', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }),
+  importPreset: (dataset) =>
+    request('/import/preset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dataset }),
+    }),
 }

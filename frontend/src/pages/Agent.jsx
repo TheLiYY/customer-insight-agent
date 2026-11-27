@@ -80,7 +80,11 @@ export default function Agent() {
   const logRef = useRef(null)
 
   useEffect(() => {
-    api.suggestions().then(setSuggestions).catch(() => {})
+    // 接口返回 { suggestions: [...] }，这里做一次兜底，避免结构变化直接把页面打挂
+    api
+      .suggestions()
+      .then((res) => setSuggestions(Array.isArray(res) ? res : res.suggestions || []))
+      .catch(() => {})
   }, [])
 
   useEffect(() => {

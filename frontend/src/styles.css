@@ -816,3 +816,60 @@ tbody tr:hover {
   gap: 8px;
   margin-bottom: 12px;
 }
+
+/* ---- 数据导入页 ---- */
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 34px 20px;
+  border: 2px dashed #c7cbd8;
+  border-radius: 14px;
+  background: #fbfcff;
+  cursor: pointer;
+  transition: all .15s ease;
+  text-align: center;
+}
+.dropzone:hover,
+.dropzone.dragging {
+  border-color: var(--accent);
+  background: #f2f6ff;
+}
+.dropzone-icon { font-size: 26px; }
+
+.btn-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.field-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 14px 0 4px;
+  flex-wrap: wrap;
+}
+.field-row label { font-size: 13px; color: #4b5563; }
+.field-row select {
+  padding: 6px 10px;
+  border: 1px solid #d8dbe4;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
+}
+
+.success-box {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #eefaf2;
+  border: 1px solid #b9e7c8;
+}
+.success-box p { margin: 6px 0 8px; }
+
+.warn-box {
+  margin: 8px 0 4px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #fff9ec;
+  border: 1px solid #f2dfae;
+  color: #7a5a12;
+}
+.warn-box p { margin: 2px 0; }

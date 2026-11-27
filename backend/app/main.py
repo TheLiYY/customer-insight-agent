@@ -15,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .agent.routes import agent_router
+from .api.imports import router as import_router
 from .api.routes import router
 from .core.config import settings
 
@@ -23,6 +24,8 @@ app = FastAPI(
     version=settings.version,
     description=(
         "客户画像 · 精准推送 · 个性化营销策略\n\n"
+        "上传一份客户表格（Excel / CSV），系统会自动识别字段、生成画像与分层、"
+        "预测活动响应，并给出可执行的营销方案。\n\n"
         "接口说明见仓库 docs/API.md；本服务的 /openapi.json 可直接导入 Apifox / Postman。"
     ),
 )
@@ -36,6 +39,7 @@ app.add_middleware(
 )
 
 app.include_router(router)
+app.include_router(import_router)
 app.include_router(agent_router)
 
 

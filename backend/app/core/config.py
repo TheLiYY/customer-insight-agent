@@ -14,6 +14,7 @@ PROCESSED_DIR = DATA_DIR / "processed"
 CUSTOMERS_CSV = PROCESSED_DIR / "customers.csv"
 META_JSON = PROCESSED_DIR / "dataset_meta.json"
 SAMPLE_CSV = RAW_DIR / "ifood_df_sample.csv"
+UPLOADS_DIR = DATA_DIR / "uploads"
 
 # 分群维度：KMeans 使用的数值特征
 CLUSTER_FEATURES = [
@@ -72,8 +73,8 @@ def zh_marital(value: str) -> str:
 class Settings:
     """运行期配置，全部支持环境变量覆盖。"""
 
-    app_name: str = "Customer Insight Agent"
-    version: str = "1.0.0"
+    app_name: str = "CustLens · 客户洞察与精准营销平台"
+    version: str = "1.1.0"
     cluster_k: int = int(os.getenv("CLUSTER_K", "4"))
     random_state: int = int(os.getenv("RANDOM_STATE", "42"))
     # 在线大模型（OpenAI 兼容协议）。留空则自动降级为离线规则引擎。

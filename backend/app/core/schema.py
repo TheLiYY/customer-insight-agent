@@ -19,7 +19,7 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import numpy as np
@@ -524,7 +524,7 @@ def build_customers(
         ref = _to_date(work[tx["order_date"]]).max()
         ctx["reference_date"] = f"取数据内最晚日期 {ref.date()}"
     else:
-        ref = pd.Timestamp(datetime.utcnow())
+        ref = pd.Timestamp(datetime.now(timezone.utc).replace(tzinfo=None))
         ctx["reference_date"] = "取构建当天（无日期列）"
 
     # ---------- 情况 A：订单明细，先按客户聚合 ----------

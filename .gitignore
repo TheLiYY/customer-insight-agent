@@ -18,6 +18,8 @@ frontend/.vite/
 .tmp/
 tmp/
 *.tmp
+# 网页上传的原始文件（含用户真实数据，不进仓库）
+backend/data/uploads/
 # ---------- Nginx 运行时目录 ----------
 deploy/logs/
 deploy/temp/
@@ -41,3 +43,6 @@ Thumbs.db
 # ---------- Docker 离线部署包 ----------
 dist-bundle/
 dist-bundle.zip
+
+# 上传文件时同步落盘的原始副本（每次导入都会重新生成）
+backend/data/raw/source_raw.csv

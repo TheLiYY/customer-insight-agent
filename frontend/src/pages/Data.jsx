@@ -25,15 +25,22 @@ export default function Data() {
   const caps = data.capabilities || {}
   const contract = data.contract || {}
   const mapping = contract.mapping || {}
-  const mappingRows = Object.entries(mapping.rows || {}).map(([key, info]) => ({
-    key,
-    field: key,
+  // mapping.rows 是数组（每项含 target/label/source/confidence/how）；兼容旧的对象形态
+  const mappingRows = (Array.isArray(mapping.rows) ? mapping.rows : Object.entries(mapping.rows || {}).map(([key, info]) => ({ target: key, ...info }))).map((info, i) => ({
+    key: info.target || String(i),
+    field: info.target,
+    label: info.label || info.target,
     source: info.source,
     confidence: info.confidence || '—',
     how: info.how || '',
   }))
-  const catRows = Object.entries(data.categories || {}).map(([key, label]) => ({ key, key2: key, label }))
-  const chRows = Object.entries(data.channels || {}).map(([key, label]) => ({ key, key2: key, label }))
+  // 后端返回的品类/渠道可能是 [{key, name}] 数组，也可能是 { key: 中文名 } 对象
+  const toPairs = (items) =>
+    Array.isArray(items)
+      ? items.map((it) => ({ key: it.key, key2: it.key, label: it.name || it.label }))
+      : Object.entries(items || {}).map(([key, label]) => ({ key, key2: key, label }))
+  const catRows = toPairs(data.categories)
+  const chRows = toPairs(data.channels)
 
   return (
     <>
