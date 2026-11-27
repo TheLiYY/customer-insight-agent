@@ -59,6 +59,8 @@
     }
   },
   "transaction": {},
+  "dates": {},
+  "channel_label": null,
   "categories": {
     "mnt_wines": {
       "source": "MntWines",

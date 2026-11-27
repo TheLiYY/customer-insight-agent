@@ -1,4 +1,6 @@
 {
+  "name": "iFood 营销活动客户数据（Customer Personality Analysis）",
+  "preset": "ifood",
   "source": "iFood 营销活动客户数据（Customer Personality Analysis）",
   "source_page": "https://www.kaggle.com/datasets/imakash3011/customer-personality-analysis",
   "desc": "巴西食品电商的客户画像与营销活动响应数据，2205 行 39 列，含收入、六品类消费额、购买渠道、历史活动响应。",

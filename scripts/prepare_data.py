@@ -213,6 +213,8 @@ def normalize_zip_timestamps(path: Path) -> None:
 def write_meta(df: pd.DataFrame, fields: list[dict], preset: dict, mapping: dict, ctx: dict, raw_rows: int, raw_cols: int, dup_rows: int = 0) -> dict:
     caps = ctx["capabilities"]
     meta = {
+        "name": preset["name"],
+        "preset": preset.get("key", "custom"),
         "source": preset["name"],
         "source_page": preset.get("page", ""),
         "desc": preset["desc"],
@@ -245,6 +247,8 @@ def write_meta(df: pd.DataFrame, fields: list[dict], preset: dict, mapping: dict
                 "grain": mapping["grain"],
                 "mapping": mapping["mapping"],
                 "transaction": mapping["transaction"],
+                "dates": mapping.get("dates", {}),
+                "channel_label": mapping.get("channel_label"),
                 "categories": mapping["categories"],
                 "channels": mapping["channels"],
                 "unused_columns": mapping.get("unused_columns", []),
@@ -268,6 +272,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--sep", help="CSV 分隔符（默认自动判断）")
     parser.add_argument("--encoding", help="文件编码（默认 utf-8，失败自动试 gbk）")
     parser.add_argument("--mapping", help="复用 mapping.json，跳过自动识别")
+    parser.add_argument("--title", help="数据集显示名称（默认用文件名）")
     parser.add_argument("--refresh", action="store_true", help="强制重新联网下载，忽略本地缓存")
     parser.add_argument("--no-excel", action="store_true", help="不生成原始数据 Excel")
     args = parser.parse_args(argv)
@@ -279,13 +284,14 @@ def main(argv: list[str] | None = None) -> int:
     if args.file:
         raw = load_any(args.file, args.sheet, args.sep, args.encoding)
         preset = {
-            "name": Path(args.file).stem,
+            "key": "custom",
+            "name": args.title or Path(args.file).stem,
             "desc": f"来自本地文件 {Path(args.file).name}",
             "page": "",
         }
     else:
         key = args.dataset or "ifood"
-        preset = PRESETS[key]
+        preset = dict(PRESETS[key], key=key)
         cached = RAW / f"{key}.csv"
         print(f"[info] 数据集：{preset['name']}")
         if cached.exists() and not args.refresh:

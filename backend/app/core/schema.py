@@ -38,6 +38,7 @@ STANDARD_FIELDS: dict[str, dict[str, Any]] = {
             "customerid", "customer_id", "id", "userid", "user_id", "memberid", "member_id",
             "custid", "cust_id", "clientid", "client_id", "customerkey", "customernumber",
             "客户id", "客户编号", "客户号", "用户id", "用户编号", "会员id", "会员号", "顾客编号", "编号",
+            "会员卡号", "卡号", "客户卡号", "会员编号", "顾客号", "客户编码", "会员编码", "买家id", "买家编号",
         ],
         "required": True,
     },
@@ -60,6 +61,7 @@ STANDARD_FIELDS: dict[str, dict[str, Any]] = {
         "aliases": [
             "income", "annualincome", "yearincome", "yearlyincome", "salary", "totalsalary",
             "monthlyincome", "earnings", "收入", "年收入", "月收入", "家庭收入", "工资", "薪资",
+            "月薪", "年薪", "家庭年收入", "可支配收入", "收入水平", "月均收入", "个人收入",
         ],
     },
     "education": {
@@ -87,7 +89,7 @@ STANDARD_FIELDS: dict[str, dict[str, Any]] = {
         "aliases": [
             "recency", "recencydays", "dayssincelast", "dayssincelastpurchase", "lastpurchasedays",
             "dayslastorder", "daysoflastorder", "pdays", "最近购买间隔", "最近一次购买天数",
-            "距上次购买天数", "上次购买间隔", "未购买天数",
+            "距上次购买天数", "上次购买间隔", "未购买天数", "距今天数", "未活跃天数", "沉默天数",
         ],
     },
     "purchase_freq": {
@@ -98,6 +100,7 @@ STANDARD_FIELDS: dict[str, dict[str, Any]] = {
             "frequency", "freq", "purchasefrequency", "orders", "ordercount", "numorders",
             "numtransactions", "transactions", "previous", "campaign",
             "购买次数", "订单数", "交易次数", "下单次数", "购买频次", "消费次数",
+            "购买笔数", "成交笔数", "交易笔数", "消费笔数", "订单量", "复购次数", "累计订单数",
         ],
     },
     "total_spend": {
@@ -107,7 +110,9 @@ STANDARD_FIELDS: dict[str, dict[str, Any]] = {
         "aliases": [
             "totalspend", "monetary", "mnttotal", "totalamount", "amount", "totalrevenue",
             "lifetimevalue", "spend", "revenue", "sales", "累计消费", "消费额", "消费金额",
-            "总消费", "累计金额", "交易金额", "金额", "客单价",
+            "总消费", "累计金额", "交易金额", "金额", "消费总额", "累计消费额", "累计消费金额",
+            "成交金额", "成交额", "支付金额", "实付金额", "累计成交", "累计成交额", "销售额",
+            "总金额", "消费合计", "订单总额",
         ],
     },
     "value_score": {
@@ -122,7 +127,7 @@ STANDARD_FIELDS: dict[str, dict[str, Any]] = {
         "desc": "成为客户至今的天数",
         "aliases": [
             "tenure", "tenuredays", "customerdays", "dayssincejoined", "accountage", "在网天数",
-            "注册天数", "入会天数", "客户天数", "账龄",
+            "注册天数", "入会天数", "客户天数", "账龄", "开卡天数",
         ],
     },
     "num_deals": {
@@ -183,7 +188,37 @@ TRANSACTION_FIELDS: dict[str, dict[str, Any]] = {
     "product_category": {
         "label": "商品品类",
         "type": "category",
-        "aliases": ["category", "productcategory", "categoryname", "producttype", "品类", "商品品类", "类目", "商品类别", "品类名称"],
+        "aliases": [
+            "category", "productcategory", "categoryname", "producttype", "品类", "商品品类",
+            "类目", "商品类别", "品类名称", "商品类目", "商品分类", "产品类别", "类目名称", "分类",
+        ],
+    },
+}
+
+# 客户级表里常见「日期」列：CRM/会员系统导出的往往是日期而不是已经算好的天数，
+# 这里识别出来后在 build_customers 里换算成「距今天数」，否则 recency 会整列丢失。
+DATE_FIELDS: dict[str, dict[str, Any]] = {
+    "last_order_date": {
+        "label": "最近消费日期",
+        "type": "date",
+        "desc": "最后一次下单/消费的日期，用来换算「最近购买间隔」",
+        "aliases": [
+            "lastorderdate", "lastpurchasedate", "lastbuydate", "lastactivitydate",
+            "recentorderdate", "lastdealdate", "lastconsumedate",
+            "最近消费时间", "最近消费日期", "最近购买时间", "最近购买日期", "上次购买时间",
+            "上次消费时间", "最后购买时间", "最后消费日期", "最近下单时间", "最近交易时间",
+            "末次消费时间", "末次购买时间", "近期消费时间", "最近成交时间", "最近一次消费",
+        ],
+    },
+    "join_date": {
+        "label": "注册/首次消费日期",
+        "type": "date",
+        "desc": "成为客户的日期，用来换算「在网天数」",
+        "aliases": [
+            "joindate", "registerdate", "signupdate", "createdate", "regdate", "firstorderdate",
+            "注册时间", "注册日期", "入会时间", "入会日期", "开卡日期", "办卡日期",
+            "首次消费时间", "首次购买时间", "首单时间", "开户时间", "成为会员时间",
+        ],
     },
 }
 
@@ -204,11 +239,18 @@ CATEGORY_KEYWORDS: dict[str, list[str]] = {
 }
 
 CHANNEL_KEYWORDS: dict[str, list[str]] = {
-    "线上商城": ["web", "online", "app", "h5", "小程序", "线上", "电商", "网店", "商城"],
+    "线上商城": [
+        "web", "online", "app", "h5", "小程序", "线上", "电商", "网店", "商城",
+        "天猫", "淘宝", "京东", "拼多多", "抖音", "快手", "小红书", "直播", "商城下单",
+    ],
     "邮购目录": ["catalog", "mail", "directmail", "目录", "邮购", "直邮"],
-    "线下门店": ["store", "shop", "offline", "pos", "线下", "门店", "到店", "实体店"],
+    "线下门店": ["store", "shop", "offline", "pos", "线下", "门店", "到店", "实体店", "专柜"],
     "电话营销": ["phone", "callcenter", "telemarketing", "电话", "外呼", "电销"],
+    "私域运营": ["私域", "微信", "企微", "社群", "公众号", "导购"],
 }
+
+# 文本渠道列常见的列名（值是「天猫 / 门店 / 抖音」这种）
+CHANNEL_NAME_HINTS = ["渠道", "来源", "平台", "店铺", "通路", "触点", "channel", "source", "platform", "shop"]
 
 # 品类/渠道列必须「是数值列」才算消费额/次数，这些词排除掉（id、数量、价格不是消费额）
 _EXCLUDE_HINTS = ["id", "编号", "code", "代码", "count", "频次", "间隔", "days", "天数", "单价", "price", "数量", "qty"]
@@ -274,11 +316,22 @@ def _pick(df: pd.DataFrame, spec: dict[str, Any], taken: set[str]) -> tuple[str 
 def _is_numeric(series: pd.Series) -> bool:
     if series.dtype.kind in "ifu":
         return True
-    sample = series.dropna().astype(str).head(50)
+    sample = series.dropna().head(80)
     if sample.empty:
         return False
-    converted = pd.to_numeric(sample.str.replace(",", "", regex=False).str.replace("%", "", regex=False), errors="coerce")
-    return converted.notna().mean() >= 0.8
+    return _to_number(sample).notna().mean() >= 0.8
+
+
+def _is_date_like(series: pd.Series) -> bool:
+    """抽样尝试解析日期：8 成以上能解析，才算日期列（避免把 2021 这种数字当日期）。"""
+    sample = series.dropna().astype(str).head(80)
+    if sample.empty:
+        return False
+    try:
+        parsed = pd.to_datetime(sample, errors="coerce", format="mixed")
+    except (TypeError, ValueError):  # 极老的 pandas 不支持 format="mixed"
+        parsed = pd.to_datetime(sample, errors="coerce")
+    return float(parsed.notna().mean()) >= 0.8
 
 
 BINARY_TOKENS = {"y", "yes", "true", "1", "1.0", "t", "n", "no", "false", "0", "0.0", "f", "是", "否", "有", "无", "成功", "失败"}
@@ -318,6 +371,9 @@ def _looks_like_channel(col: str) -> tuple[str | None, str]:
         for key in keys:
             if normalize_name(key) in norm:
                 return label, f"列名含「{key}」"
+    for hint in CHANNEL_NAME_HINTS:
+        if normalize_name(hint) in norm:
+            return "渠道", f"列名含「{hint}」"
     return None, ""
 
 
@@ -412,6 +468,32 @@ def detect(df: pd.DataFrame) -> dict[str, Any]:
             channels[key] = {"source": col, "label": label, "why": why}
             taken.add(col)
 
+    # 文本渠道列：销售明细里的「来源渠道 / 下单平台 / 门店」这种列，
+    # 值是「天猫 / 抖音直播 / 门店」，本身不是数字，但能按客户拆成计数
+    channel_label: dict[str, str] | None = None
+    for col in df.columns:
+        if col in taken or _is_numeric(df[col]):
+            continue
+        values = df[col].dropna().astype(str).str.strip()
+        unique = [v for v in values.unique().tolist() if v]
+        if not unique or len(unique) > 12:
+            continue
+        hits = sum(
+            1
+            for keywords in CHANNEL_KEYWORDS.values()
+            for keyword in keywords
+            if any(keyword.lower() in v.lower() for v in unique)
+        )
+        name_label, name_why = _looks_like_channel(col)
+        if hits >= 2 or name_label:
+            channel_label = {
+                "source": col,
+                "label": name_label or "渠道",
+                "why": name_why or "取值是渠道名称，按客户拆成各渠道下单次数",
+            }
+            taken.add(col)
+            break
+
     # 判断粒度：有客户编号重复 + 有订单号/日期/金额 => 订单明细
     grain = "customer"
     reasons: list[str] = []
@@ -425,12 +507,27 @@ def detect(df: pd.DataFrame) -> dict[str, Any]:
         elif dup > 0.3:
             reasons.append(f"客户编号有 {dup:.0%} 重复行，但没有订单级证据，按客户级处理（可能取最近一行）")
 
+    # 客户级表里的日期列：CRM/会员系统导出的是「最近消费时间」这种日期，
+    # 不是算好的天数，这里先认出来，后面换算成 recency / tenure_days
+    dates: dict[str, dict[str, Any]] = {}
+    if grain == "customer":
+        for key, spec in DATE_FIELDS.items():
+            col, score = _pick(df, spec, taken)
+            if col is None:
+                continue
+            if not _is_date_like(df[col]):
+                continue
+            dates[key] = {"source": col, "score": score, "confidence": {3: "高", 2: "中", 1: "低"}[score]}
+            taken.add(col)
+
     unused = [c for c in df.columns if c not in taken]
     return {
         "mapping": mapping,
         "transaction": tx,
         "categories": categories,
         "channels": channels,
+        "channel_label": channel_label,
+        "dates": dates,
         "grain": grain,
         "grain_reasons": reasons,
         "unused_columns": unused,
@@ -446,10 +543,17 @@ def _slug(name: str) -> str:
 
 
 def _to_number(series: pd.Series) -> pd.Series:
+    """把「¥1,234」「1.2万」「35%」这类文本金额/数量转成数字，转不了的给 NaN。"""
     if series.dtype.kind in "ifu":
         return series.astype(float)
-    cleaned = series.astype(str).str.replace(",", "", regex=False).str.replace("%", "", regex=False)
-    return pd.to_numeric(cleaned, errors="coerce")
+    text = series.astype(str).str.strip()
+    for token in (",", "，", "¥", "￥", "$", "元", "%", "\u00a0", " "):
+        text = text.str.replace(token, "", regex=False)
+    mult = pd.Series(1.0, index=text.index)
+    mult = mult.mask(text.str.endswith("万").fillna(False), 1e4)
+    mult = mult.mask(text.str.endswith("千").fillna(False), 1e3)
+    num = pd.to_numeric(text.str.rstrip("万千"), errors="coerce")
+    return num * mult
 
 
 _TRUE_TOKENS = {"1", "y", "yes", "true", "t", "success", "successful", "是", "已购买", "购买", "响应", "正样本", "churn", "流失"}
@@ -515,6 +619,7 @@ def build_customers(
 
     std = {k: v["source"] for k, v in mapping["mapping"].items()}
     tx = {k: v["source"] for k, v in mapping["transaction"].items()}
+    dates = {k: v["source"] for k, v in mapping.get("dates", {}).items()}
 
     # 参考日期：默认取数据里最晚的一单（保证每次构建结果一致），没有日期列才用今天
     if reference_date is not None:
@@ -523,9 +628,15 @@ def build_customers(
     elif tx.get("order_date") is not None:
         ref = _to_date(work[tx["order_date"]]).max()
         ctx["reference_date"] = f"取数据内最晚日期 {ref.date()}"
+    elif dates.get("last_order_date") is not None:
+        ref = _to_date(work[dates["last_order_date"]]).max()
+        ctx["reference_date"] = f"取数据内最晚消费日期 {ref.date()}"
     else:
         ref = pd.Timestamp(datetime.now(timezone.utc).replace(tzinfo=None))
         ctx["reference_date"] = "取构建当天（无日期列）"
+    if pd.isna(ref):
+        ref = pd.Timestamp(datetime.now(timezone.utc).replace(tzinfo=None))
+        ctx["reference_date"] = "日期列全为空，退回构建当天"
 
     # ---------- 情况 A：订单明细，先按客户聚合 ----------
     if mapping["grain"] == "transaction":
@@ -537,6 +648,9 @@ def build_customers(
         out.index.name = "customer_id"
 
         amount_col = std.get("total_spend") or tx.get("amount")
+        if amount_col is not None:
+            # 订单明细里的金额常常带 ￥ 和千分位，先转成数字再求和
+            work[amount_col] = _to_number(work[amount_col])
         if amount_col is None and {"quantity", "unit_price"} <= set(tx):
             work["__amount"] = _to_number(work[tx["quantity"]]) * _to_number(work[tx["unit_price"]])
             amount_col = "__amount"
@@ -566,7 +680,16 @@ def build_customers(
         if cat_col is not None and amount_col is not None:
             pivot = work.pivot_table(index=id_col, columns=cat_col, values=amount_col, aggfunc="sum", fill_value=0.0)
             for col in pivot.columns:
-                out[_slug(col)] = pivot[col]
+                key = _slug(col)
+                while key in mapping["categories"] or key in out.columns:
+                    key = f"{key}_2"
+                out[key] = pivot[col]
+                mapping["categories"][key] = {
+                    "source": cat_col,
+                    "label": str(col),
+                    "why": "订单明细按品类透视",
+                }
+            ctx["aggregations"].append("品类消费额 = 明细按「" + str(cat_col) + "」透视求和")
             ctx["warnings"].append("明细表里的「品类」列已按客户透视成品类消费额")
         # 没有客户级的 品类/渠道 列，则保留源表里的静态列（取第一个非空值）
         for key in ("gender", "education", "marital_status", "children"):
@@ -592,6 +715,17 @@ def build_customers(
             if src in work.columns:
                 out[key] = work[src]
         out["customer_id"] = work[std["customer_id"]] if "customer_id" in std else [f"C{i:05d}" for i in range(1, len(work) + 1)]
+        # 日期列 → 天数：CRM 导出的是「最近消费时间」，换算成距参考日期的天数
+        if "recency" not in out.columns and dates.get("last_order_date") is not None:
+            out["recency"] = (ref - _to_date(work[dates["last_order_date"]])).dt.days.astype(float)
+            ctx["aggregations"].append(
+                f"recency = {ref.date()} 减去「{dates['last_order_date']}」"
+            )
+        if "tenure_days" not in out.columns and dates.get("join_date") is not None:
+            out["tenure_days"] = (ref - _to_date(work[dates["join_date"]])).dt.days.astype(float)
+            ctx["aggregations"].append(
+                f"tenure_days = {ref.date()} 减去「{dates['join_date']}」"
+            )
         # one-hot 反解（iFood 原始表）
         if "education" not in out.columns:
             edu = _education_from_onehot(work)
@@ -634,6 +768,38 @@ def build_customers(
                 out[key] = work.groupby(std.get("customer_id", work.index.name))[src].sum()
             except Exception:  # pragma: no cover
                 pass
+
+    # ---------- 文本渠道列：拆成「各渠道下单次数」 ----------
+    if mapping.get("channel_label"):
+        src = mapping["channel_label"]["source"]
+        if src in work.columns and mapping["grain"] == "transaction":
+            counts = work.pivot_table(index=std["customer_id"], columns=src, aggfunc="size", fill_value=0)
+            for col in counts.columns:
+                key = _slug(col)
+                while key in out.columns or key in mapping["channels"]:
+                    key = f"{key}_2"
+                out[key] = counts[col].reindex(out["customer_id"]).fillna(0.0).to_numpy()
+                mapping["channels"][key] = {
+                    "source": src,
+                    "label": str(col),
+                    "why": "按渠道取值拆成该渠道的下单次数",
+                }
+            ctx["aggregations"].append(f"渠道 = 「{src}」按取值拆成各渠道下单次数")
+        elif src in work.columns:
+            # 客户级：一行一位客户，渠道列记的是「这位客户主要从哪买」
+            for value in work[src].dropna().astype(str).str.strip().unique().tolist():
+                if not value:
+                    continue
+                key = _slug(value)
+                while key in out.columns or key in mapping["channels"]:
+                    key = f"{key}_2"
+                out[key] = (work[src].astype(str).str.strip() == value).astype(float)
+                mapping["channels"][key] = {
+                    "source": src,
+                    "label": value,
+                    "why": "客户级渠道列按取值拆成 0/1",
+                }
+            ctx["aggregations"].append(f"渠道 = 「{src}」按取值拆成 0/1 列")
 
     # ---------- 类型与清洗 ----------
     for key in ("age", "income", "recency", "purchase_freq", "total_spend", "value_score",
@@ -753,6 +919,15 @@ def describe(mapping: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
             "source": info["source"],
             "confidence": info.get("confidence", "高"),
             "how": "列名完全一致" if info.get("score", 3) == 3 else "列名包含别名",
+        })
+    for key, info in mapping.get("dates", {}).items():
+        spec = DATE_FIELDS.get(key, {})
+        rows.append({
+            "target": key,
+            "label": spec.get("label", key),
+            "source": info["source"],
+            "confidence": info.get("confidence", "高"),
+            "how": "日期列，已换算成距参考日期的天数",
         })
     for key, info in mapping["categories"].items():
         rows.append({"target": key, "label": info["label"], "source": info["source"], "confidence": "高", "how": f"品类识别：{info.get('why', '')}"})
