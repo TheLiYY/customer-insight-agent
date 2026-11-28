@@ -2,7 +2,7 @@
 
 面向客户数据分析场景的全栈应用：接入一份客户表或订单明细，完成客户画像、分层、活动响应预测与营销方案生成。
 
-主要面向三类使用者：运营与市场人员（不写代码，上传表格即得画像与投放名单）、数据工程人员（通过 REST 接口把分析能力接入自有系统）、以及需要评估系统实现的人（本地或容器一键启动，指标与算法均可复现）。
+主要面向三类使用者：运营与市场人员（不写代码，上传表格即得画像与投放名单）、数据工程人员（通过 REST 接口把分析能力接入自有系统）、以及需要评估系统实现的人（本地或容器方式启动，指标与算法均可复现）。
 
 [![CI](https://github.com/TheLiYY/customer-insight-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/TheLiYY/customer-insight-agent/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -182,7 +182,7 @@ GitHub Actions 在 Python 3.11 / 3.12 / 3.13 三个版本矩阵上执行上述�
 | 场景 | 方式 | 文档 |
 | --- | --- | --- |
 | 本地演示、换机 | Docker Compose（api + web） | [deploy/DOCKER.md](deploy/DOCKER.md) |
-| 云服务器长期运行 | 一键脚本 + 容器 | [deploy/DEPLOY_ONLINE.md](deploy/DEPLOY_ONLINE.md) |
+| 云服务器长期运行 | 部署脚本 + 容器 | [deploy/DEPLOY_ONLINE.md](deploy/DEPLOY_ONLINE.md) |
 
 ## 文档
 
