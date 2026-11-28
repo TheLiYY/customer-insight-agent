@@ -233,10 +233,10 @@ docker compose exec web nginx -t
 
 | 项目 | 状态 | 说明 |
 | --- | --- | --- |
-| compose 文件语法 | ✅ 已验证 | yaml.safe_load 解析 docker-compose.yml 与 deploy/docker-compose.bundle.yml 均通过 |
-| 容器内 Nginx 配置 | ✅ 已验证 | 把 upstream api:8000 换成本机端口后，用本机 nginx 1.31.10 执行 
+| compose 文件语法 | 已验证 | yaml.safe_load 解析 docker-compose.yml 与 deploy/docker-compose.bundle.yml 均通过 |
+| 容器内 Nginx 配置 | 已验证 | 把 upstream api:8000 换成本机端口后，用本机 nginx 1.31.10 执行 
 ginx -t 通过 |
-| 打包脚本 | ✅ 已验证 | deploy/make-bundle.ps1 语法解析通过；「未装 Docker」的错误分支实测能给出中文提示 |
+| 打包脚本 | 已验证 | deploy/make-bundle.ps1 语法解析通过；「未装 Docker」的错误分支实测能给出中文提示 |
 | 镜像实际构建 | ⚠️ 未在本机验证 | 本机没有安装 Docker Desktop / WSL2，docker build 无法执行 |
 | 容器联调 | ⚠️ 未在本机验证 | 同上；推送到 GitHub 后 .github/workflows/ci.yml 的 docker 作业会真正构建、起容器并探活 |
 

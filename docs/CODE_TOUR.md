@@ -107,10 +107,10 @@ customer-insight-agent/
 │   ├── Dockerfile.api             # 后端镜像（Python 3.13 + 依赖 + 内置数据）
 │   ├── Dockerfile.web             # 前端镜像（node:20 构建 → nginx 托管）
 │   ├── docker-compose.bundle.yml  # 换机器用（无 build 段，配 images.tar）
-│   ├── make-bundle.ps1            # 一键打离线部署包
+│   ├── make-bundle.ps1            # 打离线部署包
 │   ├── BUNDLE_README.md           # 部署包里给目标机看的三步说明
 │   └── DOCKER.md                  # Docker 部署原理与排障表
-├── docker-compose.yml             # 一键启动 web + api（带 build 段）
+├── docker-compose.yml             # 启动 web + api（带 build 段）
 ├── .dockerignore                  # 构建上下文排除项
 └── docs/                          # README 之外的说明文档都在这里
 ```
@@ -634,7 +634,7 @@ python scripts/export_report.py
 
 ## 9. 部署链路（Docker 版是怎么跑起来的）
 
-想让别人也能跑，最省事的是两个容器。执行 `docker compose up -d --build` 之后发生的事：
+想让别人也能跑，推荐的做法是两个容器。执行 `docker compose up -d --build` 之后发生的事：
 
 ```
 ① 构建阶段（只在这台「打包机」上发生，且只需要一次）
