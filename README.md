@@ -72,11 +72,18 @@ python backend/run.py                  # 接口文档 http://127.0.0.1:8000/docs
 cd frontend && npm install && npm run build   # 产物 frontend/dist，由 Nginx 托管
 ```
 
-Windows 环境可用脚本启动与停止（后端 8000、Nginx 8080）：
+Windows 环境下可用脚本启动与停止（后端 8000、Nginx 8080）：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/dev-start.ps1
 powershell -ExecutionPolicy Bypass -File scripts/dev-stop.ps1
+```
+
+在 cmd 中可直接运行封装脚本（`.ps1` 不能直接在 cmd 中执行）：
+
+```bat
+scripts\start.bat
+scripts\stop.bat
 ```
 
 ### 云服务器
