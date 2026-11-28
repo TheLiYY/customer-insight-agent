@@ -1,19 +1,19 @@
-# 把 CustLens 放到公网（两条路）
+# 公网部署
 
-本机跑起来是 `http://127.0.0.1:8080`，只在自己电脑上。想让别人（面试官）点开就能用，有两条路：
+本机默认地址为 `http://127.0.0.1:8080`，仅本机可访问。若需对外提供访问，有两种方式：
 
 - **A. 立刻可用、不注册**：内网穿透（cloudflared 临时隧道）——已在本机验证可用，但关掉电脑就没了。
 - **B. 长期在线、需要账号**：云平台跑 `deploy/Dockerfile.app` 单容器镜像（Render / Railway / Fly / 自己的服务器）。
 
 ---
 
-## A. 临时隧道（cloudflared，零注册）
+## A. 临时隧道（cloudflared）
 
-一条命令搞定（会自动拉起后端、8090 的对外 nginx 和隧道，并把地址写进 `.tmp\public-url.txt`）：
+启动脚本会依次拉起后端、8090 端口对外 nginx 与隧道，并把公网地址写入 `.tmp\public-url.txt`：
 
 ```powershell
 scripts\public-demo-start.ps1          # 启动并打印 https://xxx.trycloudflare.com
-scripts\public-demo-start.ps1 -Restart # 地址卡住/失效时强制重开（地址会变）
+scripts\public-demo-start.ps1 -Restart # 地址失效或无响应时重新启动（地址会变化）
 scripts\public-demo-stop.ps1           # 停掉隧道与 8090
 ```
 
@@ -49,7 +49,7 @@ cloudflared.exe tunnel --url http://127.0.0.1:8090 --no-autoupdate --logfile .tm
 3. 等构建（首次约 5–8 分钟：装前端依赖 + 后端依赖 + 构建期跑 `prepare_data.py`）。
 4. 部署成功后会给你 `https://custlens.onrender.com`，打开即用。
 
-其他平台同理，只要「用 Dockerfile 部署、给一个端口」即可：
+其他平台同样使用 `deploy/Dockerfile.app`，仅需提供一个端口：
 
 | 平台 | 操作要点 |
 |---|---|
@@ -57,7 +57,7 @@ cloudflared.exe tunnel --url http://127.0.0.1:8090 --no-autoupdate --logfile .tm
 | Fly.io | `fly launch --dockerfile deploy/Dockerfile.app`，`internal_port = 8080` |
 | 自己的服务器 | `docker build -f deploy/Dockerfile.app -t custlens . && docker run -d -p 80:8080 custlens`，前面再挂一层 HTTPS |
 
-### 公网部署要注意的两件事
+### 公网部署注意事项
 
 1. **没有登录系统**：谁拿到地址谁就能上传数据。公开演示建议二选一：
    - 只放示例数据、限制上传（改 `backend/app/api/imports.py` 的 `MAX_BYTES` 或直接下线 `/api/import/apply`）；

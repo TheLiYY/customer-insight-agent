@@ -1,28 +1,29 @@
-# Docker 部署（换机器最省事的方式）
+# Docker 部署
 
-> 目标：把这套系统拷到另一台电脑上，**不装 Python、不装 Node、不装依赖**，
-> 两条命令就能跑起来。所有环境都封在镜像里，启动后浏览器打开 `http://localhost:8080`。
+本文件说明用 Docker Compose 部署本系统的方式，包括镜像结构、启动、换机迁移、配置修改与常见问题。
+
+目标机器只需安装 Docker，无需 Python、Node 或项目依赖；容器启动后访问 `http://localhost:8080`。
 
 ---
 
-## 一、为什么用 Docker
+## 一、部署方式对比
 
-本地开发是「Anaconda venv + Node 构建 + Nginx」，换一台机器要重现这一堆东西很麻烦：
+本地开发依赖「Anaconda venv + Node 构建 + Nginx」，在新机器上重现这套环境的成本较高：
 Python 版本、pandas/numpy/sklearn 版本、Node 版本、Nginx 配置路径……
 
-Docker 把这些打包成一个**不可变的镜像**，目标机器只要有 Docker：
+Docker 把这些打包成一个**不可变的镜像**，目标机器仅需 Docker：
 
 | 对比项 | 本地环境方式 | Docker 方式 |
 | --- | --- | --- |
 | 目标机需要装 | Python 3.13、pip 依赖、Node 20、Nginx、配置路径 | 只装 Docker |
-| 首次部署耗时 | 30 分钟起，还可能踩版本坑 | 导入镜像 2 分钟，启动 10 秒 |
+| 首次部署耗时 | 30 分钟以上，可能遇到版本冲突 | 导入镜像 2 分钟，启动 10 秒 |
 | 环境一致性 | 每台机器都可能不同 | 完全相同 |
 | 卸载 | 逐个卸 | `docker compose down` + 删镜像 |
 
 本机的开发方式（`.venv` + `deploy/nginx.conf`）依然保留，两者不冲突：
 
-- **本机开发/改代码**：用 venv + 本地 Nginx（改完 `pnpm build` 立刻能看到）
-- **换机演示/交付给别人**：用 Docker
+- **本机开发/改代码**：用 venv + 本地 Nginx（改动后执行 `pnpm build` 即可生效）
+- **换机演示与交付**：用 Docker
 
 ---
 
@@ -77,13 +78,13 @@ docker compose version  # 有输出 = compose 插件就绪
 
 ---
 
-## 四、一键启动（在项目根目录）
+## 四、启动
 
 ```bash
 docker compose up -d --build
 ```
 
-首次会拉取基础镜像并构建（联网，几分钟），之后启动只要几秒。检查状态：
+首次会拉取基础镜像并构建（联网，几分钟），之后启动通常几秒内完成。检查状态：
 
 ```bash
 docker compose ps
@@ -104,7 +105,7 @@ docker compose down --rmi all  # 连镜像一起删
 
 ---
 
-## 五、换机器部署（推荐：离线部署包）
+## 五、换机器部署
 
 ### 5.1 打包
 
@@ -229,7 +230,7 @@ docker compose exec web nginx -t
 | `.dockerignore` | 排除 node_modules/.venv/.git 等，加快构建 |
 ---
 
-## 九、本机验证状态（诚实说明）
+## 九、本机验证状态
 
 | 项目 | 状态 | 说明 |
 | --- | --- | --- |

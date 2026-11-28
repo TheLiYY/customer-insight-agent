@@ -1,7 +1,6 @@
-# 代码导读（CODE TOUR）
+# 代码导读
 
-> 目标：**看完这份文档，你能指着任意一个文件说清楚它在干什么、为什么这么写。**
-> 文档不简化代码，只解释代码——遇到面试/答辩追问「这行为什么这么写」时，来这里找答案。
+本文件说明代码结构、关键模块职责、请求处理链路与部署方式，用于查阅实现细节。
 
 阅读顺序建议：
 
@@ -133,7 +132,7 @@ python backend/run.py
 `run.py` 里没有业务代码，只做两件事：拼 `sys.path`、启 uvicorn。
 好处是 IDE 里直接点运行也能跑，不用设环境变量。
 
-### 3.2 一次「看客户画像」请求
+### 3.2 客户画像请求链路
 
 ```
 GET /api/personas
@@ -157,7 +156,7 @@ GET /api/personas
 2021 行数据全内存计算，首次约 2 秒，之后毫秒级。
 未来数据涨到百万级，把这个类换成「离线跑批 + DuckDB/Parquet 查询」即可，**接口层一行都不用改**。
 
-### 3.3 一次 Agent 对话
+### 3.3 Agent 对话链路
 
 ```
 POST /api/agent/chat  {"message": "分析完有什么结论？"}
@@ -186,14 +185,14 @@ POST /api/agent/chat  {"message": "分析完有什么结论？"}
 | `table` | `{type, title, columns, rows}` | 表格 |
 
 **为什么这样设计**：如果让大模型直接生成 HTML 或 ECharts 配置，
-它很容易编出不存在的字段，前端就崩了。
+容易引用不存在的字段，导致前端渲染失败。
 让工具输出**结构化积木**，大模型只负责「用文字把积木串起来」，稳定得多。
 
 ---
 
-## 4. 模块逐个讲
+## 4. 模块说明
 
-### 4.1 `core/config.py` — 常量集中营
+### 4.1 `core/config.py` — 常量与配置
 
 ```python
 BACKEND_DIR = Path(__file__).resolve().parents[2]
@@ -212,7 +211,7 @@ CLUSTER_FEATURES = ["income", "total_spend", "purchase_freq",
 `Settings` 用 `@dataclass` 而不是 pydantic，
 因为配置项少、想保持 `core/` 不依赖 Web 框架（`core/` 里不出现 FastAPI 是有意为之）。
 
-### 4.2 `core/schema.py` — 数据契约层（「换数据也能跑」的核心）
+### 4.2 `core/schema.py` — 数据契约层
 
 这是全项目第二长的文件（约 770 行），但它只做一件事：**把任意一份客户表翻译成标准客户字段**。
 
@@ -269,7 +268,7 @@ def clear_cache() -> None:                          # store.reload() 里调
 `categories()` / `channels()` 是**动态的**：iFood 数据是 6 品类 3 渠道，
 换成别的表可能就是 2 品类 1 渠道，所有模块遍历这两个函数，不再硬编码 `mnt_wines` 之类。
 
-### 4.4 `core/rfm.py` — RFM 三把尺子
+### 4.4 `core/rfm.py` — RFM 打分
 
 核心函数 `build_rfm(df)`：
 
@@ -300,7 +299,7 @@ sil = silhouette_score(scaled, labels, sample_size=min(n, 1500), random_state=se
 - 命名排序用 `score = 0.5*z(spend) + 0.3*z(freq) - 0.2*z(recency)`，
   这里的 0.5/0.3/0.2 是**业务权重假设**，不是数学推导结果，可以在答辩时说明。
 
-### 4.6 `core/persona.py` — 从数字到「人」
+### 4.6 `core/persona.py` — 客群画像生成
 
 输入：`cluster_table`（每个客户带 cluster 编号）、`clusters`（簇统计）、原始 df。
 输出：每个客群一张卡：
@@ -360,10 +359,10 @@ rules = association_rules(freq, metric="confidence", min_threshold=0.15)
 4. **时机**：按客群平均 recency 分三档（近期活跃 → 3 天内 / 中等 → 一周内 / 沉默 → 两周内）。
 5. **ROI**：`预期响应人数 = N × 该批人平均概率`，`预期营收 = 响应人数 × 转化率 × 客单价`，
    `ROI = 预期营收 / budget`。
-6. 输出话术 `copy`、优先级 `priority`、名单预览 `audience_preview`。
+6. 输出触达文案 `copy`、优先级 `priority`、名单预览 `audience_preview`。
 
 **为什么 ROI 一定 > 1**：因为客单价（几百元）远高于触达成本（8 元），
-只要圈对人群，ROI 就好看。**这一点要主动说明**——
+ROI 成立的前提是人群圈选准确，这一点需要说明：
 真实业务里还要算物流、退货、毛利，ROI 会低不少，别把演示值当成承诺。
 
 ### 4.10 `core/insights.py` — 自动结论（本次新增的核心能力）
@@ -391,7 +390,7 @@ def build_insights(df, kpis, segments, personas, prop, rules, penetration) -> di
   前端可以只显示标题（概览），也可以展开看证据链（答辩）。
 - `actions` 按 `priority` 排序，形成「先做什么、后做什么」的执行清单。
 - 配置了大模型时，这些结论会作为工具结果交给 Agent 复述，
-  大模型只负责组织语言，**不会编造数字**。
+  大模型仅负责组织语言，数值全部来自工具返回。
 
 **想加一条新结论**：在 `build_insights` 里加一个 `add(...)` 调用即可，
 参数是 `(category, severity, title, conclusion, evidence, action, priority)`。
@@ -409,7 +408,7 @@ def build_insights(df, kpis, segments, personas, prop, rules, penetration) -> di
 
 ### 4.12 `core/store.py` — 结果仓库
 
-**这是后端的"心脏"**。所有重计算都在这里懒加载、缓存：
+**这是后端的核心模块**。所有重计算都在这里懒加载、缓存：
 
 | property | 触发什么计算 | 前端哪个页用 |
 | --- | --- | --- |
@@ -459,7 +458,7 @@ def build_insights(df, kpis, segments, personas, prop, rules, penetration) -> di
 
 **为什么工具返回 blocks 而不是字符串**：见 3.3 节。
 
-### 4.15 `agent/orchestrator.py` — 大脑
+### 4.15 `agent/orchestrator.py` — 意图识别与编排
 
 ```python
 def chat(message, history):
@@ -539,7 +538,7 @@ return () => { ro.disconnect(); chart.dispose() }
 
 ---
 
-## 5. 数据从哪来、到哪去
+## 5. 数据流
 
 ```
 你的原始表（任意列名；内置 iFood 是 2205 行 × 39 列）
@@ -620,14 +619,14 @@ python scripts/export_report.py
 
 ---
 
-## 8. 代码里几个"有意为之"的选择
+## 8. 设计取舍
 
 1. **`core/` 不 import FastAPI**：让核心算法可以脱离 Web 单独跑（脚本、Notebook、定时任务都能复用）。
 2. **算法用 sklearn / mlxtend，不手写**：可维护、有文档、能解释，是工程实践的正确选择。
 3. **不做前端状态管理库**：9 个页面、每个页面一次 fetch，`useState` 足够；引入 Redux 只会增加理解成本。
 4. **不做数据库**：2021 行 CSV 读取耗时 <100ms，上数据库反而增加部署复杂度。数据涨到十万级时换 DuckDB 即可。
 5. **Agent 双模式 + 规则兜底**：演示稳定性的优先级高于"看起来高级"。
-6. **自动结论文案写死在代码里**：保证每条结论可追溯到数字，不会出现"大模型编了个不存在的 30%"。
+6. **自动结论文案由代码生成**：每条结论可追溯到具体数值，不存在模型自行生成数值的情况。
 7. **部署只保留 Nginx 一种前端方式**：静态托管 + `/api` 反代同源，省掉 CORS 与跨域调试；本机与容器只是换一份 conf。
 
 ---

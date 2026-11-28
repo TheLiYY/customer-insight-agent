@@ -5,7 +5,7 @@ Base URL：`http://127.0.0.1:8000`
 
 所有接口返回 JSON，异常统一为 `{ "detail": "错误信息" }`（HTTP 4xx/5xx）。
 
-## 用 Apifox / Postman 管理接口
+## Apifox / Postman 导入
 
 ```bash
 python scripts/export_openapi.py
@@ -230,7 +230,7 @@ python scripts/export_openapi.py
 {
   "segments": [{
     "name": "重要价值客户", "priority": 1,
-    "desc": "最近买过、买得又多又贵，是企业的现金牛。",
+    "desc": "最近购买、频次与金额均较高，是营收主要来源。",
     "action": "VIP 专属权益 + 新品优先购；不要用大额折扣，重点维护关系。",
     "count": 715, "ratio": 0.3557, "revenue": 599606.0, "revenue_ratio": 0.5686,
     "avg_r": 4.6, "avg_f": 4.3, "avg_m": 4.4,
@@ -521,7 +521,7 @@ python scripts/export_openapi.py
 
 ---
 
-# 数据导入（上传自己的客户表）
+# 数据导入
 
 这几个接口对应页面上「我的数据」的完整流程：**先 inspect 试读，确认识别无误后再 apply 真正切换**。apply 内部会调用 `scripts/prepare_data.py` 重算，然后刷新服务端缓存，所以不需要重启后端。
 
@@ -558,7 +558,7 @@ python scripts/export_openapi.py
 
 ## GET /api/import/template
 
-下载一份空的数据模板（xlsx，三个 sheet：客户级宽表 / 订单明细 / 填写说明），照着填就能被 100% 认出来。
+下载一份空的数据模板（xlsx，三个 sheet：客户级宽表 / 订单明细 / 填写说明），按表头填写即可被完整识别。
 
 响应是二进制文件流：`Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`，`Content-Disposition: attachment; filename="custlens-data-template.xlsx"`。
 

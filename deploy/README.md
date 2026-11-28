@@ -1,4 +1,4 @@
-# 前端部署：Nginx（唯一方式）
+# 前端部署：Nginx
 
 本项目**前端只通过 Nginx 部署**：Nginx 托管 `frontend/dist` 里的静态文件，并把 `/api/` 反代到后端 FastAPI（`127.0.0.1:8000`）。
 浏览器只访问 Nginx 一个地址，所以不需要 CORS，也不需要额外起任何静态服务器。
@@ -13,7 +13,7 @@
 
 ## 一、Windows（本机演示）
 
-### 0. 一条命令搞定（推荐）
+### 0. 启动脚本
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\dev-start.ps1   # 后端 + Nginx 一起起
@@ -26,7 +26,7 @@ powershell -ExecutionPolicy Bypass -File scripts\dev-stop.ps1    # 一起停
 
 下面的手工步骤留着，用来理解每一步在做什么、或者在没有 PowerShell 的机器上照做。
 
-### 1. 先装 Nginx（已装过可跳过）
+### 1. 安装 Nginx
 
 ```powershell
 winget install --id nginxinc.nginx -e --source winget
@@ -119,7 +119,7 @@ sudo systemctl daemon-reload && sudo systemctl enable --now customer-insight-api
 
 | 配置 | 作用 | 为什么这么写 |
 | --- | --- | --- |
-| `location /assets/` + `expires 1y, immutable` | 静态资源长缓存 | Vite 产物文件名带 hash，内容一变文件名就变，可以放心强缓存 |
+| `location /assets/` + `expires 1y, immutable` | 静态资源长缓存 | Vite 产物文件名带 hash，内容一变文件名就变，可采用强缓存 |
 | `location = /index.html` + `no-store` | 入口不缓存 | 发版后刷新立刻拿到新 bundle，不会白屏或加载旧代码 |
 | `try_files $uri $uri/ /index.html` | SPA 路由回落 | 前端是单页应用，刷新 `/insights` 之类路径时仍要返回 index.html |
 | `location /api/` + `proxy_pass http://upstream` | 接口反代 | 同源请求，前端不用配 CORS，也不暴露后端端口 |
